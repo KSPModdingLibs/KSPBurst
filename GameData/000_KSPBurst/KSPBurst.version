@@ -1,0 +1,25 @@
+{
+  "NAME"     : "KSPBurst",
+  "DOWNLOAD" : "https://github.com/KSPModdingLibs/KSPBurst/releases",
+  "URL"      : "https://raw.githubusercontent.com/KSPModdingLibs/KSPBurst/master/GameData/000_KSPBurst/KSPBurst.version",
+  "GITHUB" : {
+    "USERNAME"   : "KSPModdingLibs",
+    "REPOSITORY" : "KSPBurst",
+  },
+  "VERSION" : {
+    "MAJOR" : 1,
+    "MINOR" : 5,
+    "PATCH" : 0,
+    "BUILD" : 0
+  },
+  "KSP_VERSION_MIN" : {
+    "MAJOR" : 1,
+    "MINOR" : 8,
+    "PATCH" : 0
+  },
+  "KSP_VERSION_MAX" : {
+    "MAJOR" : 1,
+    "MINOR" : 11,
+    "PATCH" : 99
+  }
+}

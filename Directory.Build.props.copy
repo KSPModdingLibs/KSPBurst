@@ -1,0 +1,8 @@
+<!-- Rename this file to Directory.Build.props and customize KSP_DIR variable
+as path to your KSP directory-->
+<Project>
+    <PropertyGroup>
+        <KSP_DIR>C:\Zaidimai\KSP 1.11\</KSP_DIR>
+        <DATA_DIRNAME>KSP_x64_Data</DATA_DIRNAME>
+    </PropertyGroup>
+</Project>

@@ -1,0 +1,16 @@
+{
+    "unityBuildDir": "Unity/KSPBurst/Build",
+    "kspMin": "1.8",
+    "kspMax": "1.11",
+    "version": "1.5.0.0",
+    "versionTemplate": "tools/KSPBurst.version.in",
+    "unityPlugins": [
+        "System.Runtime.CompilerServices.Unsafe.dll",
+        "System.Runtime.dll",
+        "Unity.Burst.dll",
+        "Unity.Burst.Unsafe.dll",
+        "Unity.Collections.dll",
+        "Unity.Jobs.dll",
+        "Unity.Mathematics.dll"
+    ]
+}
