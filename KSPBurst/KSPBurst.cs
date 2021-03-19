@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -170,9 +171,23 @@ namespace KSPBurst
                 RedirectStandardError = true,
                 UseShellExecute = false // needed for stream redirection
             };
-            using Process process = Process.Start(info);
+            using var process = new Process {StartInfo = info};
+            bool started;
 
-            if (process is null)
+            try
+            {
+                started = process.Start();
+            }
+            catch (Win32Exception)
+            {
+                LogErrorFormat(
+                    "Are you missing mono installation? https://www.mono-project.com/download/stable/#download-{0}",
+                    PathUtil.SelectByPlatform("win", "lin", "mac"));
+
+                throw;
+            }
+
+            if (!started)
                 // propagate error to main thread
                 return $"Failed to start burst compiler '{burstExecutable}'";
 

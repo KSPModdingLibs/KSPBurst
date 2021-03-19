@@ -15,6 +15,8 @@ Download the latest release from the [GitHub releases](https://github.com/KSPMod
 archive into your KSP directory. `plugins_only` version does not contain the compiler, use it only if KSPBurst is a hard
 dependency and download size is an issue.
 
+Compiler version requires Mono, you can download it from [here](https://www.mono-project.com/download/stable/).
+
 Burst compiler version can be changed by replacing existing `com.unity.burst@<version>.zip` archive with a different
 one. The mod expects the archive to follow `<package name>@<package version>.<extension>` naming scheme, where `<package
 name>` contains `burst`.  If a matching archive was not found, KSPBurst will default to using a compiler matching `<path
