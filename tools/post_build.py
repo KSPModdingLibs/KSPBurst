@@ -13,7 +13,26 @@ def copy(src: common.PathLike, dst: common.PathLike, *args, **kwargs) -> None:
     if src.is_dir():
         shutil.copytree(src, dst, *args, **kwargs)
     else:
-        shutil.copy(src, pathlib.Path(dst) / src.parts[-1], *args, **kwargs)
+        # copying file, if destination is directory add the same filename
+        dst = pathlib.Path(dst)
+        if dst.is_dir():
+            dst = dst / src.parts[-1]
+        shutil.copy(src, dst, *args, **kwargs)
+
+
+def copy_unity_plugins(dst: pathlib.Path, config: dict) -> None:
+    data_dir = common.unity_data_dir(config["unityBuildDir"])
+    if data_dir is None:
+        return
+
+    plugins = [package + ".dll" for package in config["unityPackages"]]
+    plugins.extend(config["unityDependencies"])
+    src = data_dir / "Managed"
+
+    for plugin in plugins:
+        plugin = src / plugin
+        if plugin.exists():
+            copy(plugin, dst)
 
 
 def main():
@@ -26,20 +45,13 @@ def main():
         parser.print_help()
         quit()
 
-    # resolve git root directory and load build config
-    root_dir = common.root_dir()
+    # load build config
     config = common.load_config()
-    ksp_dir = pathlib.Path(config["KSP_DIR"])
 
-    # copy unity plugins if they exist
+    # copy unity plugins
     mod_dir = common.mod_dir()
     plugins_dir = mod_dir / "Plugins"
-    data_dir = common.unity_data_dir(config["unityBuildDir"])
-    if data_dir is not None:
-        for plugin in config["unityPlugins"]:
-            plugin = data_dir / "Managed" / plugin
-            if plugin.exists():
-                copy(plugin, plugins_dir)
+    copy_unity_plugins(plugins_dir, config)
 
     # copy build target
     target = pathlib.Path(args.target)
@@ -56,6 +68,8 @@ def main():
     common.archive_burst(mod_dir)
 
     # copy mod to KSP dir
+    root_dir = common.root_dir()
+    ksp_dir = pathlib.Path(config["KSP_DIR"])
     gamedata = root_dir / "GameData"
     ksp_gamedata = ksp_dir / "GameData"
     copy(gamedata, ksp_gamedata, dirs_exist_ok=True)

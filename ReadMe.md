@@ -199,15 +199,15 @@ Usage: bcl.exe [options]
 Tools read mod configuration options from `config.json`, users should create `config.json.user` and override the values
 there:
 
-| Option            | Description                                               |
-| ----------------- | --------------------------------------------------------- |
-| `unityBuildDir`   | relative path to unity project build directory            |
-| `kspMin`          | minimum compatible KSP version                            |
-| `kspMax`          | maximum compatible KSP version                            |
-| `version`         | `KSPBurst` version                                        |
-| `versionTemplate` | relative path to version template file                    |
-| `unityPackages`   | list of bundled unity packages                            |
-| `unityPlugins`    | list of plugins to copy to mod directory from unity build |
+| Option              | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `unityBuildDir`     | relative path to unity project build directory        |
+| `kspMin`            | minimum compatible KSP version                        |
+| `kspMax`            | maximum compatible KSP version                        |
+| `version`           | `KSPBurst` version                                    |
+| `versionTemplate`   | relative path to version template file                |
+| `unityPackages`     | list of bundled unity packages                        |
+| `unityDependencies` | list of managed plugins that unity packages depend on |
 
 ### Tools
 

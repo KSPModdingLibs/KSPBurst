@@ -10,13 +10,9 @@
         "Unity.Collections",
         "Unity.Jobs"
     ],
-    "unityPlugins": [
+    "unityDependencies": [
         "System.Runtime.CompilerServices.Unsafe.dll",
         "System.Runtime.dll",
-        "Unity.Burst.dll",
-        "Unity.Burst.Unsafe.dll",
-        "Unity.Collections.dll",
-        "Unity.Jobs.dll",
-        "Unity.Mathematics.dll"
+        "Unity.Burst.Unsafe.dll"
     ]
 }
