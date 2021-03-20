@@ -123,13 +123,11 @@ namespace KSPBurst
         {
             // extract compiler
             string errorString = UnpackBurstCompiler(out string packageDir);
-            if (!string.IsNullOrEmpty(errorString)) return $"Burst package not found: {errorString}";
+            if (!string.IsNullOrEmpty(errorString) || string.IsNullOrEmpty(packageDir))
+                return $"Burst package not found: {errorString}";
 
             // check if any plugins have changed since last time
-            AssemblyUtil.AssemblyVersion[] loadedVersions = AssemblyUtil.LoadedPluginVersions();
-            AssemblyUtil.AssemblyVersion[] cachedVersions = AssemblyUtil.LoadPluginVersionsFromCache(packageDir);
-            AssemblyUtil.AssemblyVersionChange[] changes = AssemblyUtil.ComputeChanges(loadedVersions, cachedVersions);
-            LogFormat("Plugins found:\n{0}", AssemblyUtil.Format(changes));
+            AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(packageDir);
             if (!changes.AnyChanges() && !string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup))
             {
                 // nothing changed and backup exists, rename backup to original name and skip expensive burst invocation
@@ -138,10 +136,30 @@ namespace KSPBurst
                 return null;
             }
 
-            // changes found, cache plugin versions
-            AssemblyUtil.CachePluginVersions(loadedVersions, packageDir);
+            string message = RunBurstCompiler(packageDir);
 
-            return RunBurstCompiler(packageDir);
+            if (message is null)
+            {
+                // changes found and burst completed successfully, cache plugin versions
+                AssemblyUtil.CachePluginVersions(changes, packageDir);
+            }
+
+            return message;
+        }
+
+        // ReSharper disable once ReturnTypeCanBeEnumerable.Local
+        [NotNull]
+        private static AssemblyUtil.AssemblyVersionChange[] CollectPluginChanges([NotNull] string cacheDir)
+        {
+            if (string.IsNullOrWhiteSpace(cacheDir))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(cacheDir));
+
+            AssemblyUtil.AssemblyVersion[] loadedVersions = AssemblyUtil.LoadedPluginVersions();
+            AssemblyUtil.AssemblyVersion[] cachedVersions = AssemblyUtil.LoadPluginVersionsFromCache(cacheDir);
+            AssemblyUtil.AssemblyVersionChange[] changes = AssemblyUtil.ComputeChanges(loadedVersions, cachedVersions);
+            LogFormat("Plugins found:\n{0}", AssemblyUtil.Format(changes));
+
+            return changes;
         }
 
         [CanBeNull]
@@ -219,7 +237,7 @@ namespace KSPBurst
         }
 
         [CanBeNull]
-        private static string UnpackBurstCompiler(out string burstDir)
+        private static string UnpackBurstCompiler([CanBeNull] out string burstDir)
         {
             burstDir = null;
             string modDir = PathUtil.ModDir;

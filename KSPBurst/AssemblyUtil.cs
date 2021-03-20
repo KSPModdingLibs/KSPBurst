@@ -30,7 +30,7 @@ namespace KSPBurst
         {
             // merge url into name so that multiple DLLs with the same name but different paths can be distinguished
             return LoadedPlugins().Select(assembly => new AssemblyVersion
-                {Name = $"{assembly.url}/{assembly.name}", Guid = assembly.assembly.VersionId()}).ToArray();
+                {Url = $"{assembly.url}/{assembly.name}", Guid = assembly.assembly.VersionId()}).ToArray();
         }
 
         [NotNull]
@@ -58,7 +58,16 @@ namespace KSPBurst
             using var file = new StreamWriter(Path.Combine(directory, cacheFilename));
 
             foreach (AssemblyVersion version in versions)
-                file.WriteLine("{0}" + Separator + "{1}", version.Name, version.Guid);
+                file.WriteLine("{0}" + Separator + "{1}", version.Url, version.Guid);
+        }
+
+        public static void CachePluginVersions([NotNull] IEnumerable<AssemblyVersionChange> changes,
+            [NotNull] string directory, [NotNull] string cacheFilename = CacheName)
+        {
+            if (changes is null) throw new ArgumentNullException(nameof(changes));
+            
+            CachePluginVersions(changes.Where(change => change.Loaded is not null).Select(change =>
+                new AssemblyVersion {Url = change.Url, Guid = (Guid) change.Loaded}), directory, cacheFilename);
         }
 
         public static void DeleteCache([NotNull] string directory, [NotNull] string cacheFilename = CacheName)
@@ -96,7 +105,7 @@ namespace KSPBurst
 
                 versions.Add(new AssemblyVersion
                 {
-                    Name = line.Substring(0, index),
+                    Url = line.Substring(0, index),
                     Guid = Guid.Parse(line.Substring(index + 1))
                 });
             }
@@ -139,7 +148,7 @@ namespace KSPBurst
 
                 return loadedVersions.Select(version => new AssemblyVersionChange
                 {
-                    Url = version.Name,
+                    Url = version.Url,
                     Loaded = version.Guid,
                     Cached = null
                 }).ToArray();
@@ -148,13 +157,13 @@ namespace KSPBurst
             if (loadedVersions is null)
                 return cachedVersions.Select(version => new AssemblyVersionChange
                 {
-                    Url = version.Name,
+                    Url = version.Url,
                     Cached = version.Guid,
                     Loaded = null
                 }).ToArray();
 
-            Dictionary<string, AssemblyVersion> loaded = loadedVersions.ToDictionary(version => version.Name);
-            Dictionary<string, AssemblyVersion> saved = cachedVersions.ToDictionary(version => version.Name);
+            Dictionary<string, AssemblyVersion> loaded = loadedVersions.ToDictionary(version => version.Url);
+            Dictionary<string, AssemblyVersion> saved = cachedVersions.ToDictionary(version => version.Url);
             HashSet<string> names = loaded.Keys.ToHashSet();
             names.UnionWith(saved.Keys);
 
@@ -183,7 +192,7 @@ namespace KSPBurst
 
         public struct AssemblyVersion
         {
-            public string Name;
+            public string Url;
             public Guid Guid;
         }
 
