@@ -9,6 +9,8 @@ The Burst compiler is archived to prevent KSP from trying to load its dynamic li
 first time the mod runs to `<path to KSP>/PluginData/KSPBurst@<mod version>-<archive name>`. Burst standard outputs can
 be found in `<path to KSP>/Logs/KSPBurst/` and `KSP.log`.
 
+You can find forum post [here](https://forum.kerbalspaceprogram.com/index.php?/topic/201112-*).
+
 ## Installation
 
 Download the latest release from the [GitHub releases](https://github.com/KSPModdingLibs/KSPBurst/releases) and extract the
