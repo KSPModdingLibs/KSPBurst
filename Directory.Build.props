@@ -2,7 +2,7 @@
 <Project>
     <PropertyGroup>
         <KSP_DIR>C:\Zaidimai\KSP 1.11\</KSP_DIR>
-        <DATA_DIR>KSP_x64_Data</DATA_DIR>
+        <DATA_DIRNAME>KSP_x64_Data</DATA_DIRNAME>
     </PropertyGroup>
     <Import Project="Directory.Build.props.user" Condition=" Exists('Directory.Build.props.user') "/>
 </Project>
