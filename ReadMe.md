@@ -31,12 +31,14 @@ need to download the compiler version for Burst benefits.
 
 Burst compatible Unity plugins and their dependencies are also bundled:  
 
-* Unity.Burst 1.5.0
-* Unity.Collections 0.1.1-preview
-* Unity.Mathematics 1.2.1
-* Unity.Jobs 0.1.1-preview
+[comment]: # (begin_packages)
 
-Burst user guide can be found [here](https://docs.unity3d.com/Packages/com.unity.burst@1.5/manual/index.html).
+* [Unity.Burst 1.5.0](https://docs.unity3d.com/Packages/com.unity.burst@1.5/manual/index.html)  
+* [Unity.Mathematics 1.2.1](https://docs.unity3d.com/Packages/com.unity.mathematics@1.2/manual/index.html)  
+* [Unity.Collections 0.1.1-preview](https://docs.unity3d.com/Packages/com.unity.collections@0.1/manual/index.html)  
+* [Unity.Jobs 0.1.1-preview](https://docs.unity3d.com/Packages/com.unity.jobs@0.1/manual/index.html)  
+
+[comment]: # (end_packages)
 
 ## Configuration Options
 
@@ -204,6 +206,7 @@ there:
 | `kspMax`          | maximum compatible KSP version                            |
 | `version`         | `KSPBurst` version                                        |
 | `versionTemplate` | relative path to version template file                    |
+| `unityPackages`   | list of bundled unity packages                            |
 | `unityPlugins`    | list of plugins to copy to mod directory from unity build |
 
 ### Tools

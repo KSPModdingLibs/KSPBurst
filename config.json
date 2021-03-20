@@ -4,6 +4,12 @@
     "kspMax": "1.11",
     "version": "1.5.0.0",
     "versionTemplate": "tools/KSPBurst.version.in",
+    "unityPackages": [
+        "Unity.Burst",
+        "Unity.Mathematics",
+        "Unity.Collections",
+        "Unity.Jobs"
+    ],
     "unityPlugins": [
         "System.Runtime.CompilerServices.Unsafe.dll",
         "System.Runtime.dll",
