@@ -222,8 +222,17 @@ there:
 ### Building the Mod
 
 1. Clone KSPBurst  
-2. Copy `Directory.Build.props.copy` to `Directory.Build.props` and change `KSP_DIR` to your KSP install location.
-   Depending on the platform you may also need to change `DATA_DIRNAME` to match your installation.
+2. Create `Directory.Build.props.user` in the root directory with
+
+    ```xml
+    <Project>
+      <PropertyGroup>
+        <KSP_DIR>path to KSP</KSP_DIR>
+      </PropertyGroup>
+    </Project>
+    ```
+
+   Depending on the platform you may also need to set `DATA_DIRNAME` to match your installation.
 3. If not building Unity packages, go to to step 7
 4. Open Unity project at `Unity/KSPBurst` in Unity Editor  
 5. Build the Unity project and note the build directory

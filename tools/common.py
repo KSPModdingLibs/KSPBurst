@@ -37,17 +37,35 @@ def load_json(filename: PathLike) -> dict:
         return json.load(file)
 
 
+def load_build_props(path: PathLike) -> dict:
+    if not isinstance(path, pathlib.Path):
+        path = pathlib.Path(path)
+
+    tree = ET.parse(path)
+    root = tree.getroot()
+
+    items = {}
+    for section in root:
+        if section.tag == "Import" and "Project" in section.attrib:
+            project = pathlib.Path(section.attrib["Project"])
+            if not project.is_absolute():
+                project = path.parent / project
+            if project.exists():
+                items.update(load_build_props(project))
+        elif section.tag == "PropertyGroup":
+            for item in section:
+                if item.text is None:
+                    continue
+                items[item.tag] = item.text
+
+    return items
+
+
 def load_config() -> dict:
-    data = {}
     directory = root_dir()
 
     # load Directory.Build.props first
-    tree = ET.parse(directory / "Directory.Build.props")
-    root = tree.getroot()
-    for item in root[0]:
-        if item.text is None:
-            continue
-        data[item.tag] = item.text
+    data = load_build_props(directory / "Directory.Build.props")
 
     # load config
     data.update(load_json(directory / "config.json"))

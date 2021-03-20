@@ -362,7 +362,7 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # user files
-Directory.Build.props
+Directory.Build.props.user
 config.json.user
 
 # editor settings
