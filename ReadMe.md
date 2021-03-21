@@ -17,6 +17,9 @@ Download the latest release from the [GitHub releases](https://github.com/KSPMod
 archive into your KSP directory. `plugins_only` version does not contain the compiler, use it only if KSPBurst is a hard
 dependency and download size is an issue.
 
+Alternatively, KSPBurst can be installed from CKAN using `KSPBurst` identifier. `plugins_only` version is indexed as
+`KSPBurst-Lite`.
+
 Compiler version requires Mono, you can download it from [here](https://www.mono-project.com/download/stable/).
 
 Burst compiler version can be changed by replacing existing `com.unity.burst@<version>.zip` archive with a different
