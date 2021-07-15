@@ -1,7 +1,7 @@
 <!-- Create Directory.Build.props.user and customize KSP_DIR variable as path to your KSP directory-->
 <Project>
     <PropertyGroup>
-        <KSP_DIR>C:\Zaidimai\KSP 1.11\</KSP_DIR>
+        <KSP_DIR>C:\Zaidimai\KSP 1.12\</KSP_DIR>
         <DATA_DIRNAME>KSP_x64_Data</DATA_DIRNAME>
     </PropertyGroup>
     <Import Project="Directory.Build.props.user" Condition=" Exists('Directory.Build.props.user') "/>

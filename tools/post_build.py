@@ -25,6 +25,7 @@ def copy_unity_plugins(dst: pathlib.Path, config: dict) -> None:
     if data_dir is None:
         return
 
+    common.fixup_versions(config)
     plugins = [package + ".dll" for package in config["unityPackages"]]
     plugins.extend(config["unityDependencies"])
     src = data_dir / "Managed"

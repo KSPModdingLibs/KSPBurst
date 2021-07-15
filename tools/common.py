@@ -176,3 +176,9 @@ def nuget_packages() -> List[pathlib.Path]:
         pathlib.Path(p)
         for p in glob.glob(f"{root_dir()}/packages/**/lib/net4*/*.dll", recursive=True)
     ]
+
+
+def fixup_versions(config: dict):
+    import pe
+
+    pe.fixup_versions(config)

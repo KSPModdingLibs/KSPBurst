@@ -372,3 +372,7 @@ config.json.user
 # archives
 /GameData/000_KSPBurst/*burst*@*
 /archives/
+
+# generated files
+/tools/version.res
+/tools/version.rc
