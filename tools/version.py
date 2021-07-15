@@ -4,6 +4,8 @@
 import common
 import shutil
 import re
+import subprocess
+import os
 
 
 def update_readme(config: dict) -> None:
@@ -36,20 +38,63 @@ def update_readme(config: dict) -> None:
 
 \g<2>"""
 
-    common.replace_in_file(
-        common.root_dir() / "ReadMe.md",
-        [
+    replacements = [
+        (
+            re.compile(
+                r"(\[comment\]: # \(begin_packages\))"
+                ".*"
+                r"(\[comment\]: # \(end_packages\))",
+                re.DOTALL,  # make dot match new lines as well
+            ),
+            package_markdown[1:],
+        ),
+    ]
+
+    try:
+        bcl_exe = list(
+            (common.unity_dir() / "Library" / "PackageCache").glob(
+                "com.unity.burst@*/**/bcl.exe"
+            )
+        )[0]
+
+        # bcl.exe report --help as unknown argument... so have to remove the
+        # first line
+        # also replace \ with / for the pesky re package that tries to interpret
+        # them as escape sequences
+        usage = (
+            "\n".join(
+                subprocess.run([bcl_exe, "--help"], capture_output=True)
+                .stdout.decode("utf-8")
+                .splitlines()[1:]
+            )
+            .replace(os.getcwd(), "<Current working dir>")
+            .replace("\\", "/")
+        )
+
+        # remove private info
+        usage = re.sub(r"Users/\w+", "Users/<username>", usage)
+
+        replacements.append(
             (
                 re.compile(
-                    r"(\[comment\]: # \(begin_packages\))"
+                    r"(\[comment\]: # \(begin_bcl_usage\))"
                     ".*"
-                    r"(\[comment\]: # \(end_packages\))",
-                    re.DOTALL,  # make dot match new lines as well
+                    r"(\[comment\]: # \(end_bcl_usage\))",
+                    re.DOTALL,
                 ),
-                package_markdown[1:],
-            ),
-        ],
-    )
+                rf"""\g<1>
+
+```text
+{usage}
+```
+
+\g<2>""",
+            )
+        )
+    except IndexError:
+        pass
+
+    common.replace_in_file(common.root_dir() / "ReadMe.md", replacements)
 
 
 def update_assembly_info(config: dict) -> None:

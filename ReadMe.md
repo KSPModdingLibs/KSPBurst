@@ -50,14 +50,17 @@ Burst compatible Unity plugins and their dependencies are also bundled:
 All configuration options present in `KSPBurst.cfg` map directly to `bcl.exe` command line options. If `ModuleManager`
 is present, patched options will be used.
 
+[comment]: # (begin_bcl_usage)
+
 ```text
 Usage: bcl.exe [options]
        bcl.exe --platform=<platform> --assembly=<PathToAssembly.dll_or_exe> --type=<TypeName>
        bcl.exe --platform=<platform> --assembly-folder=<path1;path2> --method=<FullMethodName[--MethodHash];method2>
        bcl.exe --validate-external-tool-chain --platform=<platform>
       --platform=VALUE       Target Platform <Windows|macOS|Linux|Android|iOS|
-                               PS4|XboxOne|Wasm|UWP|Lumin|Switch|Stadia|tvOS>.
-                               Default: Windows
+                               PS4|XboxOne|Wasm|UWP|Lumin|Switch|Stadia|tvOS|
+                               EmbeddedLinux|GameCoreXboxOne|GameCoreXboxSeries>
+                               . Default: Windows
       --backend=VALUE        The backend name. Default: `burst-llvm-11`
       --safety-checks        Enable safety checks. Default for safety checks:
                                Disabled
@@ -97,8 +100,8 @@ Usage: bcl.exe [options]
       --generate-job-marshalling-methods
                              Enables the generation of job marshalling methods.
                                Default: False
-      --temp-folder=VALUE    The temporary directory to use. Defaults to C:\
-                               Users\Username\AppData\Local\Temp\
+      --temp-folder=VALUE    The temporary directory to use. Defaults to C:/
+                               Users/<username>/AppData/Local/Temp/
       --disable-warnings=VALUE
                              Warnings to disable (separated by ;)  e.g. BC1370;
                                BC1322
@@ -130,7 +133,7 @@ Usage: bcl.exe [options]
       --key-folder=VALUE     Key file folder location - required for some
                                platforms. Default:
       --decode-folder=VALUE  Decode folder location - required for some
-                               platforms. Default: C:\burst
+                               platforms. Default: <Current working dir>
       --threads=VALUE        Number of compiler threads working concurrently.
                                Default is 13
       --assembly-folder=VALUE
@@ -191,6 +194,8 @@ Usage: bcl.exe [options]
       --help                 Show Help
 ```
 
+[comment]: # (end_bcl_usage)
+
 ## Building
 
 ### Prerequisites
@@ -204,15 +209,16 @@ Usage: bcl.exe [options]
 Tools read mod configuration options from `config.json`, users should create `config.json.user` and override the values
 there:
 
-| Option              | Description                                           |
-| ------------------- | ----------------------------------------------------- |
-| `unityBuildDir`     | relative path to unity project build directory        |
-| `kspMin`            | minimum compatible KSP version                        |
-| `kspMax`            | maximum compatible KSP version                        |
-| `version`           | `KSPBurst` version                                    |
-| `versionTemplate`   | relative path to version template file                |
-| `unityPackages`     | list of bundled unity packages                        |
-| `unityDependencies` | list of managed plugins that unity packages depend on |
+| Option               | Description                                                           |
+| -------------------- | --------------------------------------------------------------------- |
+| `unityBuildDir`      | relative path to unity project build directory                        |
+| `kspMin`             | minimum compatible KSP version                                        |
+| `kspMax`             | maximum compatible KSP version                                        |
+| `version`            | `KSPBurst` version                                                    |
+| `versionTemplate`    | relative path to version template file                                |
+| `unityPackages`      | list of bundled unity packages                                        |
+| `unityDependencies`  | list of managed plugins that unity packages depend on                 |
+| `invalidFileVersion` | list of plugins with missing version sections for KSP 1.12 workaround |
 
 ### Tools
 
