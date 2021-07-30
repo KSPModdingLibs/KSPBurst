@@ -207,25 +207,7 @@ Usage: bcl.exe [options]
 ### Configuration
 
 Tools read mod configuration options from `config.json`, users should create `config.json.user` and override the values
-there:
-
-| Option               | Description                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| `unityBuildDir`      | relative path to unity project build directory                                       |
-| `kspMin`             | minimum compatible KSP version                                                       |
-| `kspMax`             | maximum compatible KSP version                                                       |
-| `version`            | `KSPBurst` version                                                                   |
-| `versionTemplate`    | relative path to version template file                                               |
-| `unityPackages`      | list of bundled unity packages                                                       |
-| `unityDependencies`  | list of managed plugins that unity packages depend on, either a `string` or `object` |
-| `invalidFileVersion` | list of plugins with missing version sections for KSP 1.12 workaround                |
-
-```json                                                                               |
-{
-  "name": "plugin name",
-  "additionalSearchPaths": "glob patterns relative to git root directory to prioritize searching in" 
-}
-```
+there.
 
 ### Tools
 
