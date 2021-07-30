@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.4.1
+
+* Fixed error when KSP has multiple loaded assemblies at the same path
+
 ## 1.5.4.0
 
 * Updated `Unity.Burst` to version 1.5.4

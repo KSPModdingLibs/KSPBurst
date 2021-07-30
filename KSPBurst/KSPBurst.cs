@@ -139,10 +139,8 @@ namespace KSPBurst
             string message = RunBurstCompiler(packageDir);
 
             if (message is null)
-            {
                 // changes found and burst completed successfully, cache plugin versions
                 AssemblyUtil.CachePluginVersions(changes, packageDir);
-            }
 
             return message;
         }
