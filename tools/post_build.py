@@ -6,6 +6,8 @@ import pathlib
 import common
 import shutil
 
+from typing import Union
+
 
 def copy(src: common.PathLike, dst: common.PathLike, *args, **kwargs) -> None:
     print(f"Copying: {src} -> {dst}")
@@ -21,19 +23,39 @@ def copy(src: common.PathLike, dst: common.PathLike, *args, **kwargs) -> None:
 
 
 def copy_unity_plugins(dst: pathlib.Path, config: dict) -> None:
+    root_dir = common.root_dir()
     data_dir = common.unity_data_dir(config["unityBuildDir"])
     if data_dir is None:
         return
 
-    common.fixup_versions(config)
     plugins = [package + ".dll" for package in config["unityPackages"]]
     plugins.extend(config["unityDependencies"])
     src = data_dir / "Managed"
 
+    plugin: Union[str, dict]
     for plugin in plugins:
-        plugin = src / plugin
-        if plugin.exists():
-            copy(plugin, dst)
+        plugin_name: str
+        if isinstance(plugin, dict):
+            plugin_name = plugin["name"]
+            paths = plugin["additionalSearchPaths"]
+
+            found = False
+            path: str
+            for path in paths:
+                globbed = list(root_dir.glob(f"{path}/**/{plugin_name}"))
+                if globbed and globbed[0].exists():
+                    copy(globbed[0], dst)
+                    found = True
+                    break
+
+            if found:
+                continue
+        else:
+            plugin_name = plugin
+
+        plugin_path = src / plugin_name
+        if plugin_path.exists():
+            copy(plugin_path, dst)
 
 
 def main():

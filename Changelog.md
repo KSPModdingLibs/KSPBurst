@@ -2,6 +2,7 @@
 
 ## 1.5.4.1
 
+* Fixed KSP 1.12 failing to load plugins on linux
 * Fixed error when KSP has multiple loaded assemblies at the same path
 
 ## 1.5.4.0

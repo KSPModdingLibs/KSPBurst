@@ -11,9 +11,13 @@
         "Unity.Jobs"
     ],
     "unityDependencies": [
-        "System.Runtime.CompilerServices.Unsafe.dll",
-        "System.Runtime.dll",
-        "Unity.Burst.Unsafe.dll"
+        {
+            "name": "System.Runtime.CompilerServices.Unsafe.dll",
+            "additionalSearchPaths": [
+                "Unity/KSPBurst/Library/PackageCache/*burst*"
+            ]
+        },
+        "System.Runtime.dll"
     ],
     "invalidFileVersion": [
         "Unity.Burst.Unsafe.dll",

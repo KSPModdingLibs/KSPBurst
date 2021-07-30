@@ -258,6 +258,11 @@ there:
 7. Build `KSPBurst` with your IDE or from command line, the mod will be copied your KSP installation. If the burst
    package is present in Unity directory, it may take a while to archive it the first time.
 
+   * Note: `Unity.Burst.Unsafe.dll` is missing version resource so KSP 1.12 crashes on loading, only way to fix this
+     issue that also works on Linux is to add a new version resource from Visual Studio manually, `ResourceHacker` will
+     not be enough. For this reason, `Unity.Burst.Unsafe.dll` is not copied from the Unity build directory
+     automatically.
+
 ## License
 
 Unity plugins are licensed under under the Unity Companion License for Unity-dependent projects--see [Unity Companion
