@@ -1,4 +1,5 @@
 {
+    "$schema": "./configSchema.json",
     "unityBuildDir": "Unity/KSPBurst/Build",
     "kspMin": "1.8",
     "kspMax": "1.12",

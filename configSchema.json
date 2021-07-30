@@ -1,0 +1,252 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "http://example.com/example.json",
+    "type": "object",
+    "title": "The root schema",
+    "description": "The root schema comprises the entire JSON document.",
+    "default": {},
+    "examples": [
+        {
+            "unityBuildDir": "Unity/KSPBurst/Build",
+            "kspMin": "1.8",
+            "kspMax": "1.12",
+            "version": "1.5.4.1",
+            "versionTemplate": "tools/KSPBurst.version.in",
+            "unityPackages": [
+                "Unity.Burst",
+                "Unity.Mathematics",
+                "Unity.Collections",
+                "Unity.Jobs"
+            ],
+            "unityDependencies": [
+                {
+                    "name": "System.Runtime.CompilerServices.Unsafe.dll",
+                    "additionalSearchPaths": [
+                        "Unity/KSPBurst/Library/PackageCache/*burst*"
+                    ]
+                },
+                "System.Runtime.dll"
+            ],
+            "invalidFileVersion": [
+                "Unity.Burst.Unsafe.dll",
+                "System.Runtime.CompilerServices.Unsafe.dll"
+            ]
+        }
+    ],
+    "required": [
+        "unityBuildDir",
+        "kspMin",
+        "kspMax",
+        "version",
+        "versionTemplate",
+        "unityPackages",
+        "unityDependencies"
+    ],
+    "properties": {
+        "unityBuildDir": {
+            "$id": "#/properties/unityBuildDir",
+            "type": "string",
+            "title": "The unityBuildDir schema",
+            "description": "Relative path to Unity project build directory.",
+            "default": "",
+            "examples": [
+                "Unity/KSPBurst/Build"
+            ]
+        },
+        "kspMin": {
+            "$id": "#/properties/kspMin",
+            "type": "string",
+            "title": "The kspMin schema",
+            "description": "Minimum compatible KSP version.",
+            "default": "",
+            "examples": [
+                "1.8"
+            ]
+        },
+        "kspMax": {
+            "$id": "#/properties/kspMax",
+            "type": "string",
+            "title": "The kspMax schema",
+            "description": "Maximum compatible KSP.",
+            "default": "",
+            "examples": [
+                "1.12"
+            ]
+        },
+        "version": {
+            "$id": "#/properties/version",
+            "type": "string",
+            "title": "The version schema",
+            "description": "KSPBurst version.",
+            "default": "",
+            "examples": [
+                "1.5.4.1"
+            ]
+        },
+        "versionTemplate": {
+            "$id": "#/properties/versionTemplate",
+            "type": "string",
+            "title": "The versionTemplate schema",
+            "description": "Relative path to version template file.",
+            "default": "",
+            "examples": [
+                "tools/KSPBurst.version.in"
+            ]
+        },
+        "unityPackages": {
+            "$id": "#/properties/unityPackages",
+            "type": "array",
+            "title": "The unityPackages schema",
+            "description": "List of bundled unity packages.",
+            "default": [],
+            "examples": [
+                [
+                    "Unity.Burst",
+                    "Unity.Mathematics"
+                ]
+            ],
+            "additionalItems": true,
+            "items": {
+                "$id": "#/properties/unityPackages/items",
+                "anyOf": [
+                    {
+                        "$id": "#/properties/unityPackages/items/anyOf/0",
+                        "type": "string",
+                        "title": "The first anyOf schema",
+                        "description": "Unity package name.",
+                        "default": "",
+                        "examples": [
+                            "Unity.Burst",
+                            "Unity.Mathematics"
+                        ]
+                    }
+                ]
+            }
+        },
+        "unityDependencies": {
+            "$id": "#/properties/unityDependencies",
+            "type": "array",
+            "title": "The unityDependencies schema",
+            "description": "List of managed plugins that unity packages depend on.",
+            "default": [],
+            "examples": [
+                [
+                    {
+                        "name": "System.Runtime.CompilerServices.Unsafe.dll",
+                        "additionalSearchPaths": [
+                            "Unity/KSPBurst/Library/PackageCache/*burst*"
+                        ]
+                    },
+                    "System.Runtime.dll"
+                ]
+            ],
+            "additionalItems": true,
+            "items": {
+                "$id": "#/properties/unityDependencies/items",
+                "anyOf": [
+                    {
+                        "$id": "#/properties/unityDependencies/items/anyOf/0",
+                        "type": "object",
+                        "title": "The first anyOf schema",
+                        "description": "Full dependency search specification.",
+                        "default": {},
+                        "examples": [
+                            {
+                                "name": "System.Runtime.CompilerServices.Unsafe.dll",
+                                "additionalSearchPaths": [
+                                    "Unity/KSPBurst/Library/PackageCache/*burst*"
+                                ]
+                            }
+                        ],
+                        "required": [
+                            "name",
+                            "additionalSearchPaths"
+                        ],
+                        "properties": {
+                            "name": {
+                                "$id": "#/properties/unityDependencies/items/anyOf/0/properties/name",
+                                "type": "string",
+                                "title": "The name schema",
+                                "description": "Plugin filename.",
+                                "default": "",
+                                "examples": [
+                                    "System.Runtime.CompilerServices.Unsafe.dll"
+                                ]
+                            },
+                            "additionalSearchPaths": {
+                                "$id": "#/properties/unityDependencies/items/anyOf/0/properties/additionalSearchPaths",
+                                "type": "array",
+                                "title": "The additionalSearchPaths schema",
+                                "description": "Glob patterns to search for the plugin in. If not found, defaults to Unity build directory.",
+                                "default": [],
+                                "examples": [
+                                    [
+                                        "Unity/KSPBurst/Library/PackageCache/*burst*"
+                                    ]
+                                ],
+                                "additionalItems": true,
+                                "items": {
+                                    "$id": "#/properties/unityDependencies/items/anyOf/0/properties/additionalSearchPaths/items",
+                                    "anyOf": [
+                                        {
+                                            "$id": "#/properties/unityDependencies/items/anyOf/0/properties/additionalSearchPaths/items/anyOf/0",
+                                            "type": "string",
+                                            "title": "The first anyOf schema",
+                                            "description": "Glob pattern to search for the plugin in.",
+                                            "default": "",
+                                            "examples": [
+                                                "Unity/KSPBurst/Library/PackageCache/*burst*"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "additionalProperties": true
+                    },
+                    {
+                        "$id": "#/properties/unityDependencies/items/anyOf/1",
+                        "type": "string",
+                        "title": "The second anyOf schema",
+                        "description": "Plugin filename as found in Unity build directory.",
+                        "default": "",
+                        "examples": [
+                            "System.Runtime.dll"
+                        ]
+                    }
+                ]
+            }
+        },
+        "invalidFileVersion": {
+            "$id": "#/properties/invalidFileVersion",
+            "type": "array",
+            "title": "The invalidFileVersion schema",
+            "description": "Plugin filenames with missing version sections.",
+            "default": [],
+            "examples": [
+                [
+                    "Unity.Burst.Unsafe.dll",
+                    "System.Runtime.CompilerServices.Unsafe.dll"
+                ]
+            ],
+            "additionalItems": true,
+            "items": {
+                "$id": "#/properties/invalidFileVersion/items",
+                "anyOf": [
+                    {
+                        "$id": "#/properties/invalidFileVersion/items/anyOf/0",
+                        "type": "string",
+                        "title": "The first anyOf schema",
+                        "description": "Plugin filename.",
+                        "default": "",
+                        "examples": [
+                            "Unity.Burst.Unsafe.dll",
+                            "System.Runtime.CompilerServices.Unsafe.dll"
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "additionalProperties": true
+}
