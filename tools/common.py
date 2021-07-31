@@ -142,23 +142,26 @@ def collect_files(directory: PathLike) -> List[pathlib.Path]:
 
 def archive_burst(mod_dir: PathLike) -> Optional[pathlib.Path]:
     cache_dir = unity_dir() / "Library" / "PackageCache"
+    name_pattern = "com.unity.burst@*"
 
-    import glob
-
-    paths = glob.glob(f"{cache_dir}/com.unity.burst@*")
+    paths = list(cache_dir.glob(name_pattern))
 
     if not paths:
         return None
 
     mod_dir = pathlib.Path(mod_dir)
-    dst = mod_dir / f"{os.path.basename(paths[0])}.zip"
+    dst = mod_dir / (paths[0].name + ".zip")
 
     if dst.exists():
         return dst
 
+    # remove old archives
+    for archive in mod_dir.glob(name_pattern):
+        os.remove(archive)
+
     import zipfile
 
-    burst_dir = pathlib.Path(paths[0])
+    burst_dir = paths[0]
 
     with zipfile.ZipFile(dst, "w", compression=zipfile.ZIP_DEFLATED) as zip:
         for file in collect_files(burst_dir):
