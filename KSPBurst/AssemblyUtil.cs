@@ -31,7 +31,8 @@ namespace KSPBurst
             // merge url into name so that multiple DLLs with the same name but different paths can be distinguished
             return LoadedPlugins().Select(assembly => new AssemblyVersion
             {
-                Url = $"{assembly.url}/{assembly.name}", Guid = assembly.assembly.VersionId(),
+                // use dllName instead of name since it's not guaranteed to be unique as it's set from KSPAssembly attribute
+                Url = $"{assembly.url}/{assembly.dllName}", Guid = assembly.assembly.VersionId(),
                 Version = assembly.assembly.GetName().Version
             }).ToArray();
         }
@@ -155,7 +156,7 @@ namespace KSPBurst
                 if (!dict.TryGetValue(key, out AssemblyVersion previous))
                     dict.Add(key, version);
                 else if (previous.Version is null ||
-                         (version.Version is not null && version.Version > previous.Version))
+                         version.Version is not null && version.Version > previous.Version)
                     // use the most recent version
                     dict[key] = version;
             }
