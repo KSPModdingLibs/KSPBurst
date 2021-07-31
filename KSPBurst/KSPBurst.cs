@@ -321,7 +321,7 @@ namespace KSPBurst
             // have to extract the archive, clean up old extracted files first
             List<string> cleaned = Compression.CleanOldFiles(ExtractDir);
             if (cleaned.Count > 0)
-                LogFormat("Directories cleaned: {0}", cleaned);
+                LogFormat("Directories cleaned: {0}", string.Join(", ", cleaned));
             Compression.ExtractArchive(archive, burstDir);
             Log($"{archive} extracted to {burstDir}");
 
