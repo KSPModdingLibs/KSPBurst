@@ -119,21 +119,22 @@ namespace KSPBurst
                 }
 
                 Status = CompilerStatus.Error;
-
-                // move back the old plugin to where it was
-                if (!string.IsNullOrEmpty(_pluginBackup))
-                {
-                    Log($"Restoring burst generated plugin from backup {_pluginBackup}");
-                    File.Move(_pluginBackup, PathUtil.OutputLibraryPath);
-                }
             }
             else
             {
                 Status = CompilerStatus.Completed;
+            }
 
-                // old plugin is no longer needed
-                if (!string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup))
+            if (!string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup))
+            {
+                if (!File.Exists(PathUtil.OutputLibraryPath))
                 {
+                    File.Move(_pluginBackup, PathUtil.OutputLibraryPath);
+                    LogFormat("Plugin not generated, restoring backup");
+                }
+                else
+                {
+                    // old plugin is no longer needed
                     File.Delete(_pluginBackup);
                     Log($"Deleted burst generated plugin backup {_pluginBackup}");
                 }
@@ -143,7 +144,6 @@ namespace KSPBurst
             Destroy(this);
         }
 
-        [CanBeNull]
         private BurstCompilerResult Generate()
         {
             BurstCompilerResult result = new();
@@ -158,15 +158,36 @@ namespace KSPBurst
 
             // check if any plugins have changed since last time
             AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(packageDir);
-            if (!changes.AnyChanges() && !string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup))
+
+            // load burst command line args
+            ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}");
+            List<string> args = BurstOptions.LoadArgs(node);
+
+            // output command line arguments to log files
+            string logDir = PathUtil.ModLogsDir;
+            if (!Directory.Exists(logDir))
+                Directory.CreateDirectory(logDir);
+
+            string burstExecutable = Path.Combine(packageDir, BclRelativePath);
+            var argStr = $"{burstExecutable}\n  {string.Join("\n  ", args)}";
+            var cliFile = $"{logDir}/command_line.log";
+            string lastRunArgs = null;
+            if (File.Exists(cliFile))
+                lastRunArgs = File.ReadAllText(cliFile);
+
+            if (!changes.AnyChanges() && !string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup) &&
+                lastRunArgs == argStr)
             {
-                // nothing changed and backup exists, rename backup to original name and skip expensive burst invocation
-                Log("No plugin changes detected, skipping burst generation");
-                File.Move(_pluginBackup, PathUtil.OutputLibraryPath);
+                // nothing changed and backup exists, skip expensive burst invocation
+                Log(lastRunArgs == argStr
+                    ? "Burst compiler arguments haven't changed since last time, skipping burst generation"
+                    : "No plugin changes detected, skipping burst generation");
                 return result;
             }
 
-            result = RunBurstCompiler(packageDir);
+            // save command line arguments for later inspection/next run
+            File.WriteAllText(cliFile, argStr);
+            result = RunBurstCompiler(burstExecutable, args, logDir);
 
             if (string.IsNullOrEmpty(result.ErrorMessage) && result.ExitCode == 0)
                 // changes found and burst completed successfully, cache plugin versions
@@ -190,26 +211,10 @@ namespace KSPBurst
             return changes;
         }
 
-        [CanBeNull]
-        private static BurstCompilerResult RunBurstCompiler([NotNull] string directory)
+        private static BurstCompilerResult RunBurstCompiler([NotNull] string burstExecutable,
+            [NotNull] IEnumerable<string> args, string logDir)
         {
-            if (directory is null) throw new ArgumentNullException(nameof(directory));
-
             BurstCompilerResult result = new();
-
-            // load burst command line args
-            ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}");
-            List<string> args = BurstOptions.LoadArgs(node);
-
-            // output command line arguments to log files
-            string logDir = PathUtil.ModLogsDir;
-            if (!Directory.Exists(logDir))
-                Directory.CreateDirectory(logDir);
-
-            string burstExecutable = Path.Combine(directory, BclRelativePath);
-            var argStr = $"{burstExecutable}\n  {string.Join("\n  ", args)}";
-            File.WriteAllText($"{logDir}/command_line.log", argStr);
-            LogFormat("Burst arguments:\n{0}", argStr);
 
             // run burst
             var info = new ProcessStartInfo(burstExecutable, string.Join(" ", args))
@@ -428,7 +433,7 @@ namespace KSPBurst
 
             public override string ToString()
             {
-                return _builder.ToString();
+                return IsEmpty ? string.Empty : _builder.ToString();
             }
 
             public void Write([CanBeNull] object sender, [CanBeNull] DataReceivedEventArgs e)
