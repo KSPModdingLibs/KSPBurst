@@ -2,6 +2,7 @@
 
 ## 1.5.4.2
 
+* Allow setting `root-assembly` and `assembly-folder` arguments from config
 * Burst compilation is now skipped if command line arguments and plugins haven't changed since the last time
 * Fixed crash when logging error messages from a worker thread if KSPLog is set to display them on screen
 

@@ -241,7 +241,9 @@ namespace KSPBurst
             new StringOption("disable-warnings"),
             new StringOption("compilation-defines"),
             new StringOption("linker-options"),
-            new StringOption("pdb-search-paths")
+            new StringOption("pdb-search-paths"),
+            new StringOption("root-assembly"),
+            new StringOption("assembly-folder")
         };
         // ReSharper restore StringLiteralTypo
     }
