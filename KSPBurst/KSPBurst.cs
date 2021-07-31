@@ -187,6 +187,8 @@ namespace KSPBurst
 
             // save command line arguments for later inspection/next run
             File.WriteAllText(cliFile, argStr);
+
+            LogFormat("Burst called with arguments:\n{0}", argStr);
             result = RunBurstCompiler(burstExecutable, args, logDir);
 
             if (string.IsNullOrEmpty(result.ErrorMessage) && result.ExitCode == 0)
