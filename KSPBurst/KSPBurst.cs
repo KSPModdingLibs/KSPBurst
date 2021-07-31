@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using UniLinq;
@@ -30,12 +31,20 @@ namespace KSPBurst
         public const string BclRelativePath = "package/.Runtime/bcl.exe";
         public const string BurstPackagePattern = "*burst*@*";
 
+        private static Thread _mainThread;
+        private static readonly List<string> LogMessages = new();
+        private static readonly List<string> ErrorMessages = new();
+
         [CanBeNull] private string _pluginBackup;
         [NotNull] public static string ExtractDir { get; private set; } = string.Empty;
         public static CompilerStatus Status { get; private set; } = CompilerStatus.NotStarted;
 
+        internal static bool InMainThread => Thread.CurrentThread == _mainThread;
+
         private void Awake()
         {
+            _mainThread = Thread.CurrentThread;
+
             PathUtil.Initialize();
             ExtractDir = Path.Combine(PathUtil.KspDir, "PluginData");
         }
@@ -79,19 +88,35 @@ namespace KSPBurst
             Status = CompilerStatus.Started;
 
             // run burst in a separate thread to avoid slowing down KSP loading times even more
-            Task<string> task = Task.Factory.StartNew(Generate);
+            Task<BurstCompilerResult> task = Task.Factory.StartNew(Generate);
 
             // wait for burst to complete
-            while (!task.IsCompleted) yield return null;
+            while (!task.IsCompleted)
+            {
+                FlushMessages();
+                yield return null;
+            }
+
+            FlushMessages();
+            if (!string.IsNullOrEmpty(task.Result.Stdout)) LogFormat("Burst stdout:\n{0}", task.Result.Stdout);
+            if (!string.IsNullOrEmpty(task.Result.Stderr)) LogErrorFormat("Burst stderr:\n{0}", task.Result.Stderr);
 
             // check the status
-            if (task.Exception is not null || !string.IsNullOrEmpty(task.Result))
+            if (task.Exception is not null || !string.IsNullOrEmpty(task.Result.ErrorMessage) ||
+                task.Result.ExitCode != 0)
             {
-                LogError("Burst compiler terminated in an error");
+                LogError("Burst compiler had errors");
                 if (task.Exception is not null)
+                {
                     Debug.LogException(task.Exception);
+                }
                 else
-                    LogError(task.Result);
+                {
+                    if (!string.IsNullOrEmpty(task.Result.ErrorMessage))
+                        LogError(task.Result.ErrorMessage);
+                    if (task.Result.ExitCode != 0)
+                        LogErrorFormat("Burst compiler exited with a non-zero exit code: {0}", task.Result.ExitCode);
+                }
 
                 Status = CompilerStatus.Error;
 
@@ -119,12 +144,17 @@ namespace KSPBurst
         }
 
         [CanBeNull]
-        private string Generate()
+        private BurstCompilerResult Generate()
         {
+            BurstCompilerResult result = new();
+
             // extract compiler
             string errorString = UnpackBurstCompiler(out string packageDir);
             if (!string.IsNullOrEmpty(errorString) || string.IsNullOrEmpty(packageDir))
-                return $"Burst package not found: {errorString}";
+            {
+                result.ErrorMessage = $"Burst package not found: {errorString}";
+                return result;
+            }
 
             // check if any plugins have changed since last time
             AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(packageDir);
@@ -133,16 +163,16 @@ namespace KSPBurst
                 // nothing changed and backup exists, rename backup to original name and skip expensive burst invocation
                 Log("No plugin changes detected, skipping burst generation");
                 File.Move(_pluginBackup, PathUtil.OutputLibraryPath);
-                return null;
+                return result;
             }
 
-            string message = RunBurstCompiler(packageDir);
+            result = RunBurstCompiler(packageDir);
 
-            if (message is null)
+            if (string.IsNullOrEmpty(result.ErrorMessage) && result.ExitCode == 0)
                 // changes found and burst completed successfully, cache plugin versions
                 AssemblyUtil.CachePluginVersions(changes, packageDir);
 
-            return message;
+            return result;
         }
 
         // ReSharper disable once ReturnTypeCanBeEnumerable.Local
@@ -161,9 +191,11 @@ namespace KSPBurst
         }
 
         [CanBeNull]
-        private static string RunBurstCompiler([NotNull] string directory)
+        private static BurstCompilerResult RunBurstCompiler([NotNull] string directory)
         {
             if (directory is null) throw new ArgumentNullException(nameof(directory));
+
+            BurstCompilerResult result = new();
 
             // load burst command line args
             ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}");
@@ -204,8 +236,11 @@ namespace KSPBurst
             }
 
             if (!started)
+            {
                 // propagate error to main thread
-                return $"Failed to start burst compiler '{burstExecutable}'";
+                result.ErrorMessage = $"Failed to start burst compiler '{burstExecutable}'";
+                return result;
+            }
 
             // read from the streams while burst is running to avoid filling stream buffers
             using var outputRedirect = new StreamRedirect($"{logDir}/info.log");
@@ -220,18 +255,15 @@ namespace KSPBurst
             // wait for the process to complete
             process.WaitForExit();
 
-            // print outputs to KSP log
-            if (!outputRedirect.IsEmpty)
-                LogFormat("Burst output:\n{0}", outputRedirect);
+            result.Stdout = outputRedirect.ToString();
+            result.Stderr = errorRedirect.ToString();
+            result.ExitCode = process.ExitCode;
 
-            if (!errorRedirect.IsEmpty)
-                LogErrorFormat("Burst error:\n{0}", errorRedirect);
+            result.ErrorMessage = string.IsNullOrEmpty(PathUtil.FindOutputLibrary())
+                ? "Burst did not generate a library"
+                : null;
 
-            // non-zero exit code means an error
-            if (process.ExitCode != 0)
-                return $"Burst compiler exited with code {process.ExitCode}";
-
-            return string.IsNullOrEmpty(PathUtil.FindOutputLibrary()) ? "Burst did not generate a library" : null;
+            return result;
         }
 
         [CanBeNull]
@@ -282,8 +314,11 @@ namespace KSPBurst
             }
 
             // have to extract the archive, clean up old extracted files first
-            Compression.CleanOldFiles(ExtractDir);
+            List<string> cleaned = Compression.CleanOldFiles(ExtractDir);
+            if (cleaned.Count > 0)
+                LogFormat("Directories cleaned: {0}", cleaned);
             Compression.ExtractArchive(archive, burstDir);
+            Log($"{archive} extracted to {burstDir}");
 
             if (ContainsBurstCompiler(burstDir)) return null;
 
@@ -312,6 +347,17 @@ namespace KSPBurst
                 .SelectGreatestVersion();
         }
 
+        internal static void FlushMessages()
+        {
+            foreach (string message in LogMessages)
+                Log(message);
+            foreach (string message in ErrorMessages)
+                LogError(message);
+
+            LogMessages.Clear();
+            ErrorMessages.Clear();
+        }
+
         internal static void Log([CanBeNull] string message)
         {
             Debug.LogFormat($"[{PathUtil.ModName}]: " + "{0}", message);
@@ -321,11 +367,23 @@ namespace KSPBurst
         internal static void LogFormat([NotNull] string format, params object[] args)
         {
             if (format is null) throw new ArgumentNullException(nameof(format));
+            if (!InMainThread)
+            {
+                LogMessages.Add(string.Format(format, args));
+                return;
+            }
+
             Debug.LogFormat($"[{PathUtil.ModName}]: " + format, args);
         }
 
         internal static void LogError([CanBeNull] string message)
         {
+            if (!InMainThread)
+            {
+                ErrorMessages.Add(message);
+                return;
+            }
+
             Debug.LogErrorFormat($"[{PathUtil.ModName}]: " + "{0}", message);
         }
 
@@ -333,7 +391,21 @@ namespace KSPBurst
         internal static void LogErrorFormat([NotNull] string format, params object[] args)
         {
             if (format is null) throw new ArgumentNullException(nameof(format));
+            if (!InMainThread)
+            {
+                ErrorMessages.Add(string.Format(format, args));
+                return;
+            }
+
             Debug.LogErrorFormat($"[{PathUtil.ModName}]: " + format, args);
+        }
+
+        private struct BurstCompilerResult
+        {
+            public int ExitCode;
+            [CanBeNull] public string Stdout;
+            [CanBeNull] public string Stderr;
+            [CanBeNull] public string ErrorMessage;
         }
 
         private class StreamRedirect : IDisposable

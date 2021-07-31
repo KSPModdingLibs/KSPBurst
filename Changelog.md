@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.4.2
+
+* Fixed crash when logging error messages from a worker thread if KSPLog is set to display them on screen
+
 ## 1.5.4.1
 
 * Fixed KSP 1.12 failing to load plugins on linux

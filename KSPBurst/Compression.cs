@@ -59,13 +59,9 @@ namespace KSPBurst
                 // use reversed directories to put child directories higher, seems to work at least for burst package
                 files.AddRange(directories.Reverse());
                 WriteFileList(infoFilePath, files);
-
-                KSPBurst.Log($"{archivePath} extracted to {destination}");
             }
             catch
             {
-                KSPBurst.LogError($"Error extracting archive {archivePath} to {destination}");
-
                 // remove extracted files
                 if (File.Exists(infoFilePath)) File.Delete(infoFilePath);
                 RemoveFiles(destination, files);
@@ -75,24 +71,28 @@ namespace KSPBurst
             }
         }
 
-        public static void CleanOldFiles([NotNull] string directory, [NotNull] string infoFilename = ArchiveInfoFile)
+        public static List<string> CleanOldFiles([NotNull] string directory,
+            [NotNull] string infoFilename = ArchiveInfoFile)
         {
             if (string.IsNullOrWhiteSpace(directory))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(directory));
             if (string.IsNullOrWhiteSpace(infoFilename))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(infoFilename));
 
+            List<string> cleaned = new();
             foreach (string infoFile in PathUtil.Glob(directory, $"**/{infoFilename}"))
             {
                 string dirname = Path.GetDirectoryName(infoFile);
                 if (dirname is null) continue;
 
-                KSPBurst.Log($"Cleaning old files from '{dirname}'");
+                cleaned.Add(dirname);
                 string[] fileList = ReadFileList(infoFile);
                 File.Delete(infoFile);
                 AssemblyUtil.DeleteCache(dirname);
                 RemoveFiles(dirname, fileList);
             }
+
+            return cleaned;
         }
 
         // ReSharper disable once ReturnTypeCanBeEnumerable.Local
