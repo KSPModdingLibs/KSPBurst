@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -97,32 +97,50 @@ namespace KSPBurst
                 yield return null;
             }
 
-            FlushMessages();
-            if (!string.IsNullOrEmpty(task.Result.Stdout)) LogFormat("Burst stdout:\n{0}", task.Result.Stdout);
-            if (!string.IsNullOrEmpty(task.Result.Stderr)) LogErrorFormat("Burst stderr:\n{0}", task.Result.Stderr);
-
-            // check the status
-            if (task.Exception is not null || !string.IsNullOrEmpty(task.Result.ErrorMessage) ||
-                task.Result.ExitCode != 0)
+            // set the status before anything else can throw errors
+            switch (task.Status)
             {
-                LogError("Burst compiler had errors");
-                if (task.Exception is not null)
-                {
-                    Debug.LogException(task.Exception);
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(task.Result.ErrorMessage))
-                        LogError(task.Result.ErrorMessage);
-                    if (task.Result.ExitCode != 0)
-                        LogErrorFormat("Burst compiler exited with a non-zero exit code: {0}", task.Result.ExitCode);
-                }
+                case TaskStatus.Created:
+                case TaskStatus.WaitingForActivation:
+                case TaskStatus.WaitingToRun:
+                case TaskStatus.Running:
+                case TaskStatus.WaitingForChildrenToComplete:
+                    Status = CompilerStatus.Started;
+                    break;
+                case TaskStatus.RanToCompletion:
+                    Status = CompilerStatus.Completed;
+                    break;
+                case TaskStatus.Canceled:
+                case TaskStatus.Faulted:
+                    Status = CompilerStatus.Error;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
 
-                Status = CompilerStatus.Error;
+            FlushMessages();
+
+            // accessing task.Result with non-null exception throws the exception
+            if (task.Exception is not null)
+            {
+                LogError("Burst compiler terminated with an exception");
+                Debug.LogException(task.Exception);
             }
             else
             {
-                Status = CompilerStatus.Completed;
+                if (!string.IsNullOrEmpty(task.Result.Stdout)) LogFormat("Burst stdout:\n{0}", task.Result.Stdout);
+                if (!string.IsNullOrEmpty(task.Result.Stderr)) LogErrorFormat("Burst stderr:\n{0}", task.Result.Stderr);
+
+                // check the status
+                if (!string.IsNullOrEmpty(task.Result.ErrorMessage) || task.Result.ExitCode != 0)
+                {
+                    LogError("Burst compiler had errors");
+                    if (!string.IsNullOrEmpty(task.Result.ErrorMessage))
+                        LogError(task.Result.ErrorMessage);
+                    if (task.Result.ExitCode != 0)
+                        LogErrorFormat("Burst compiler exited with a non-zero exit code: {0}",
+                            task.Result.ExitCode);
+                }
             }
 
             if (!string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup))

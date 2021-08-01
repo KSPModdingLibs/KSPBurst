@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.5.1
+
+* Fix burst status not set on error
+
 ## 1.5.5.0
 
 * Update `Unity.Burst` to version 1.5.5
