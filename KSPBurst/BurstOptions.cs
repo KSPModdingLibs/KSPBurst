@@ -15,12 +15,16 @@ namespace KSPBurst
             PathUtil.SelectByPlatform(Platform.Windows, Platform.Linux, Platform.macOS);
 
         [NotNull]
-        public static List<string> LoadArgs([NotNull] ConfigNode node)
+        public static List<string> LoadArgs([NotNull] ConfigNode node, [CanBeNull] string rootDir)
         {
             if (node is null) throw new ArgumentNullException(nameof(node));
+            if (string.IsNullOrEmpty(rootDir)) rootDir = Directory.GetCurrentDirectory();
 
             List<string> args = new()
-                {$"--platform={CurrentPlatform}", $"--output=\"{PathUtil.OutputLibrary}\""};
+            {
+                $"--platform={CurrentPlatform}",
+                $"--output=\"{PathUtil.GetRelativePath(PathUtil.OutputLibrary, rootDir)}\""
+            };
             args.AddRange(Options.Select(option => option.MakeOption(node.GetValue(option.Name)))
                 .Where(option => !string.IsNullOrEmpty(option)));
 
@@ -29,7 +33,7 @@ namespace KSPBurst
                 args.AddRange(node.GetValuesList(option.Name).Select(value => option.MakeOption(value))
                     .Where(o => !string.IsNullOrEmpty(o)));
 
-            AddRootAssemblies(args, AssemblyUtil.KspAndPluginAssemblyPaths());
+            AddRootAssemblies(args, AssemblyUtil.KspAndPluginAssemblyPaths(rootDir));
 
             return args;
         }

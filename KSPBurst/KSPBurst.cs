@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -179,13 +179,15 @@ namespace KSPBurst
 
             // load burst command line args
             ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}");
-            List<string> args = BurstOptions.LoadArgs(node);
+            string cwd = Directory.GetCurrentDirectory();
+            List<string> args = BurstOptions.LoadArgs(node, cwd);
 
             // output command line arguments to log files
             string logDir = PathUtil.ModLogsDir;
             if (!Directory.Exists(logDir))
                 Directory.CreateDirectory(logDir);
 
+            // Process doesn't want to start with relative paths...
             string burstExecutable = Path.Combine(packageDir, BclRelativePath);
             var argStr = $"{burstExecutable}\n  {string.Join("\n  ", args)}";
             var cliFile = $"{logDir}/command_line.log";
@@ -206,8 +208,8 @@ namespace KSPBurst
             // save command line arguments for later inspection/next run
             File.WriteAllText(cliFile, argStr);
 
-            LogFormat("Burst called with arguments:\n{0}", argStr);
-            result = RunBurstCompiler(burstExecutable, args, logDir);
+            LogFormat("Burst called with arguments in {0}:\n{1}", cwd, argStr);
+            result = RunBurstCompiler(burstExecutable, args, cwd, logDir);
 
             if (string.IsNullOrEmpty(result.ErrorMessage) && result.ExitCode == 0)
                 // changes found and burst completed successfully, cache plugin versions
@@ -232,8 +234,12 @@ namespace KSPBurst
         }
 
         private static BurstCompilerResult RunBurstCompiler([NotNull] string burstExecutable,
-            [NotNull] IEnumerable<string> args, string logDir)
+            [NotNull] IEnumerable<string> args, [CanBeNull] string workingDir, [NotNull] string logDir)
         {
+            if (burstExecutable is null) throw new ArgumentNullException(nameof(burstExecutable));
+            if (args is null) throw new ArgumentNullException(nameof(args));
+            if (logDir is null) throw new ArgumentNullException(nameof(logDir));
+
             BurstCompilerResult result = new();
 
             // run burst
@@ -242,7 +248,8 @@ namespace KSPBurst
                 CreateNoWindow = true, // don't need terminal popping up
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                UseShellExecute = false // needed for stream redirection
+                UseShellExecute = false, // needed for stream redirection
+                WorkingDirectory = string.IsNullOrEmpty(workingDir) ? Directory.GetCurrentDirectory() : workingDir
             };
             using var process = new Process {StartInfo = info};
             bool started;

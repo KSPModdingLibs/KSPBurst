@@ -3,6 +3,7 @@
 ## 1.5.5.1
 
 * Fix burst status not set on error
+* Paths in burst arguments are now relative to KSP directory to avoid hitting `Process` character limit on large installs
 
 ## 1.5.5.0
 

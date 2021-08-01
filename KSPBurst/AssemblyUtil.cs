@@ -38,10 +38,18 @@ namespace KSPBurst
         }
 
         [NotNull]
-        public static string[] KspAndPluginAssemblyPaths()
+        public static string[] KspAndPluginAssemblyPaths([CanBeNull] string rootDir = null)
         {
-            return LoadedPlugins().Select(assembly => assembly.path)
+            string[] paths = LoadedPlugins().Select(assembly => assembly.path)
                 .Concat(PathUtil.Glob(Path.Combine(PathUtil.DataDir, "Managed"), "*.dll")).ToArray();
+
+            if (string.IsNullOrEmpty(rootDir)) return paths;
+
+            rootDir = Path.GetFullPath(rootDir);
+            for (var i = 0; i < paths.Length; ++i)
+                paths[i] = PathUtil.GetRelativePath(paths[i], rootDir);
+
+            return paths;
         }
 
         public static Guid VersionId([NotNull] this Assembly assembly)

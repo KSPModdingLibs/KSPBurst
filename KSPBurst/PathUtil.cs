@@ -105,6 +105,25 @@ namespace KSPBurst
                 : Array.Empty<string>();
         }
 
+        // https://stackoverflow.com/a/703292/13262469
+        [NotNull]
+        public static string GetRelativePath([NotNull] string filespec, [NotNull] string folder)
+        {
+            if (filespec is null) throw new ArgumentNullException(nameof(filespec));
+            if (folder is null) throw new ArgumentNullException(nameof(folder));
+
+            var pathUri = new Uri(filespec);
+            // Folders must end in a slash
+            if (!folder.EndsWith(Path.DirectorySeparatorChar.ToString()))
+            {
+                folder += Path.DirectorySeparatorChar;
+            }
+
+            var folderUri = new Uri(folder);
+            return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString()
+                .Replace('/', Path.DirectorySeparatorChar));
+        }
+
         /// <summary>
         ///     Initialize static directory variables. Has to be called from the main thread since Unity is anal about calling even
         ///     simplest native methods from worker threads
