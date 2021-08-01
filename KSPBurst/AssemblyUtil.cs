@@ -38,10 +38,13 @@ namespace KSPBurst
         }
 
         [NotNull]
-        public static string[] KspAndPluginAssemblyPaths([CanBeNull] string rootDir = null)
+        public static string[] KspAndPluginAssemblyPaths(bool includeKsp = true, [CanBeNull] string rootDir = null)
         {
-            string[] paths = LoadedPlugins().Select(assembly => assembly.path)
-                .Concat(PathUtil.Glob(Path.Combine(PathUtil.DataDir, "Managed"), "*.dll")).ToArray();
+            IEnumerable<string> plugins = LoadedPlugins().Select(assembly => assembly.path);
+            if (includeKsp)
+                plugins = plugins.Concat(PathUtil.Glob(Path.Combine(PathUtil.DataDir, "Managed"), "*.dll"));
+
+            string[] paths = plugins.ToArray();
 
             if (string.IsNullOrEmpty(rootDir)) return paths;
 

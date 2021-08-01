@@ -33,7 +33,9 @@ namespace KSPBurst
                 args.AddRange(node.GetValuesList(option.Name).Select(value => option.MakeOption(value))
                     .Where(o => !string.IsNullOrEmpty(o)));
 
-            AddRootAssemblies(args, AssemblyUtil.KspAndPluginAssemblyPaths(rootDir));
+            AddRootAssemblies(args, AssemblyUtil.KspAndPluginAssemblyPaths(false, rootDir));
+            string kspPluginDir = Path.Combine(PathUtil.DataDir, "Managed");
+            args.Add($"--assembly-folder=\"{PathUtil.GetRelativePath(kspPluginDir, rootDir)}\"");
 
             return args;
         }

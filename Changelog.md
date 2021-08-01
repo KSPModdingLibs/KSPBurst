@@ -4,6 +4,7 @@
 
 * Fix burst status not set on error
 * Paths in burst arguments are now relative to KSP directory to avoid hitting `Process` character limit on large installs
+* Ignore plugins in `KSP_x64_Data\Managed` for `root-assembly` to further reduce command size
 
 ## 1.5.5.0
 
