@@ -93,9 +93,11 @@ namespace KSPBurst
             // wait for burst to complete
             while (!task.IsCompleted)
             {
-                FlushMessages();
                 yield return null;
             }
+
+            // Note this must not be in the loop above because the container is not threadsafe
+            FlushMessages();
 
             // set the status before anything else can throw errors
             switch (task.Status)
@@ -117,8 +119,6 @@ namespace KSPBurst
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-
-            FlushMessages();
 
             // accessing task.Result with non-null exception throws the exception
             if (task.Exception is not null)
