@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.5.2
+
+* Fix race condition that could freeze KSP loading if the burst compilation output any logs
+
 ## 1.5.5.1
 
 * Fix burst status not set on error
