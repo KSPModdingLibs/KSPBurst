@@ -4,13 +4,13 @@
   "URL"      : "https://raw.githubusercontent.com/KSPModdingLibs/KSPBurst/master/GameData/000_KSPBurst/KSPBurst.version",
   "GITHUB" : {
     "USERNAME"   : "KSPModdingLibs",
-    "REPOSITORY" : "KSPBurst",
+    "REPOSITORY" : "KSPBurst"
   },
   "VERSION" : {
     "MAJOR" : 1,
     "MINOR" : 5,
     "PATCH" : 5,
-    "BUILD" : 1
+    "BUILD" : 2
   },
   "KSP_VERSION_MIN" : {
     "MAJOR" : 1,
