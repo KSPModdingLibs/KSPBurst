@@ -233,8 +233,9 @@ there.
     ```
 
    Depending on the platform you may also need to set `DATA_DIRNAME` to match your installation.
-3. If not building Unity packages, go to to step 7
+3. If not building Unity packages AND you've built the unity packages at least once, go to to step 7
 4. Open Unity project at `Unity/KSPBurst` in Unity Editor  
+   You may hit compile errors related to undefined build targets.  These are typically wrapped in `#if UNITY_2019_4_OR_NEWER`; etc.  Simply change the failing ones to `#if false`.
 5. Build the Unity project and note the build directory
 6. Create `config.json.user` in root directory with
 
