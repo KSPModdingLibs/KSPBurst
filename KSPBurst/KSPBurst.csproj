@@ -12,6 +12,8 @@
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
         <LangVersion>9</LangVersion>
+        <StartProgram>$(KSP_DIR)\KSP_x64.exe</StartProgram>
+        <StartWorkingDirectory>$(KSP_DIR)</StartWorkingDirectory>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
         <PlatformTarget>AnyCPU</PlatformTarget>
@@ -35,32 +37,20 @@
         <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
     <ItemGroup>
-        <Reference Include="Assembly-CSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <SpecificVersion>False</SpecificVersion>
-            <HintPath>$(KSP_DIR)$(DATA_DIRNAME)\Managed\Assembly-CSharp.dll</HintPath>
+        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\Assembly-CSharp.dll">
+            <Private>False</Private>
         </Reference>
         <Reference Include="Microsoft.Extensions.FileSystemGlobbing, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60">
             <HintPath>..\packages\Microsoft.Extensions.FileSystemGlobbing.6.0.0-preview.2.21154.6\lib\net461\Microsoft.Extensions.FileSystemGlobbing.dll</HintPath>
             <Private>True</Private>
         </Reference>
-        <Reference Include="mscorlib" />
-        <Reference Include="System" />
+        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\mscorlib.dll" />
+        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\System.dll" />
         <Reference Include="System.IO.Compression" />
         <Reference Include="System.IO.Compression.FileSystem" />
-        <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <SpecificVersion>False</SpecificVersion>
-            <HintPath>$(KSP_DIR)$(DATA_DIRNAME)\Managed\UnityEngine.dll</HintPath>
+        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\UnityEngine*.dll">
+            <Private>False</Private>
         </Reference>
-        <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-            <SpecificVersion>False</SpecificVersion>
-            <HintPath>$(KSP_DIR)$(DATA_DIRNAME)\Managed\UnityEngine.CoreModule.dll</HintPath>
-        </Reference>
-    </ItemGroup>
-    <ItemGroup>
-        <Reference Include="System" />
-        <Reference Include="System.Core" />
-        <Reference Include="System.Data" />
-        <Reference Include="System.Xml" />
     </ItemGroup>
     <ItemGroup>
         <Compile Include="AssemblyUtil.cs" />
