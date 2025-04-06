@@ -38,7 +38,7 @@ Burst compatible Unity plugins and their dependencies are also bundled:
 
 [comment]: # (begin_packages)
 
-* [Unity.Burst 1.5.5](https://docs.unity3d.com/Packages/com.unity.burst@1.5/manual/index.html)  
+* [Unity.Burst 1.7.4](https://docs.unity3d.com/Packages/com.unity.burst@1.7/manual/index.html)  
 * [Unity.Mathematics 1.2.1](https://docs.unity3d.com/Packages/com.unity.mathematics@1.2/manual/index.html)  
 * [Unity.Collections 0.1.1-preview](https://docs.unity3d.com/Packages/com.unity.collections@0.1/manual/index.html)  
 * [Unity.Jobs 0.1.1-preview](https://docs.unity3d.com/Packages/com.unity.jobs@0.1/manual/index.html)  
@@ -59,14 +59,14 @@ Usage: bcl.exe [options]
        bcl.exe --validate-external-tool-chain --platform=<platform>
       --platform=VALUE       Target Platform <Windows|macOS|Linux|Android|iOS|
                                PS4|XboxOne|Wasm|UWP|Lumin|Switch|Stadia|tvOS|
-                               EmbeddedLinux|GameCoreXboxOne|GameCoreXboxSeries>
-                               . Default: Windows
-      --backend=VALUE        The backend name. Default: `burst-llvm-11`
-      --safety-checks        Enable safety checks. Default for safety checks:
-                               Disabled
+                               EmbeddedLinux|GameCoreXboxOne|GameCoreXboxSeries|
+                               PS5>. Default: Windows
+      --backend=VALUE        The backend name. Default: `burst-llvm-12`
+      --global-safety-checks-setting=VALUE
+                             Global safety checks setting <Off|On|ForceOn.
+                               Default: Off
       --disable-safety-checks
-                             Disable safety checks. Default for safety checks:
-                               Disabled
+                             Disable safety checks. Default: Disabled
       --disable-opt          Disable `ir-opt` and `cpu-opt` optimizations
       --fastmath             Enable fast math optimizations
       --target=VALUE         Target CPU <Auto|X86_SSE2|X86_SSE4|X64_SSE2|X64_
@@ -83,13 +83,16 @@ Usage: bcl.exe [options]
       --float-mode=VALUE     Math options <Default|Strict|Deterministic|Fast>
                                Default: Default
       --dump=VALUE           Dump flags <None|IL|Backend|IR|IROptimized|Asm|
-                               Function|Analysis|IRPassAnalysis|ILPre|All>
-                               Default: Function
+                               Function|Analysis|IRPassAnalysis|ILPre|
+                               IRPerEntryPoint|All> Default: Function
       --format=VALUE         Object format <Elf|Coff|MachO|Wasm> Default: Elf
       --debugtrap            Inserts a debug trap on the first instruction of
                                the entry point function. Default: False
       --disable-vectors      Disable SIMD Vector types special codegen (float4,
                                float2...). Default: False
+      --generate-link-xml=VALUE
+                             Generate a link.xml as part of the build process.
+                               Default:
       --debug=VALUE          Enables generation of debug info <None|Full|
                                LineOnly> - PDB, DWARF -. Default: None
       --debugMode            Enables debuggability for code generation using a
@@ -113,11 +116,9 @@ Usage: bcl.exe [options]
       --enable-direct-external-linking
                              Link external calls directly instead of using
                                burst.initialize. Default: False
-      --use-platform-sdk-linkers
-                             Use platform compiler tool chains for building
-                               desktop platforms (requires MSVC/XCode/Gcc/Clang)
-                               , also has no cross platform support : Default:
-                               false
+      --enable-autolayout-fallback-check
+                             Enables validation that structs are managed-
+                               sequential. Default: False
       --output=VALUE         Output path for the generated shared library.
                                Default: lib_burst_generated
       --keep-intermediate-files
@@ -135,18 +136,21 @@ Usage: bcl.exe [options]
       --decode-folder=VALUE  Decode folder location - required for some
                                platforms. Default: <Current working dir>
       --threads=VALUE        Number of compiler threads working concurrently.
-                               Default is 13
+                               Default is 9
+      --safety-checks        Enable safety checks. Default: Disabled
       --assembly-folder=VALUE
-                             Assembly folders (separated by ; or multiple
-                               options)
+                             Assembly folders (specify multiple times for
+                               multiple folders)
       --method=VALUE         Full methodname with optional hash (separated by --
                                )
       --type=VALUE           A type to decompile all static public methods from.
                                 A hash will be generated for each method
-      --assembly=VALUE       An assembly path to look for the type
+      --assembly=VALUE       An assembly path to look for the type (specify
+                               multiple times for multiple paths)
       --group                Start a new group of methods
       --verbose              Display methods being compiled. Default: false
-      --root-assembly=VALUE  Root assembly for finding compile target methods
+      --root-assembly=VALUE  Root assembly for finding compile target methods (
+                               specify multiple times for multiple roots)
       --include-root-assembly-references=VALUE
                              Recursively scan root assembly references for
                                target methods. If this is false, only target
@@ -186,9 +190,9 @@ Usage: bcl.exe [options]
       --only-list-methods    Only list the methods to compile. Outputs like '
                                assembly.dll, method'. Default False
       --pdb-search-paths=VALUE
-                             A semicolon seperated list of paths to search for
-                               pdbs, in addition to the same folder as the
-                               assembly.
+                             path to search for pdbs, in addition to the same
+                               folder as the assembly. (Specify multiple times
+                               for multiple paths)
       --warmup               Run a warmup pass of the compile to amortize the
                                cost of the JIT Compile. Default False
       --help                 Show Help
