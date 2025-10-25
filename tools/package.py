@@ -23,7 +23,7 @@ def main():
         suffix: str, valid: Callable[[pathlib.Path], bool] = lambda _: True
     ) -> None:
         with zipfile.ZipFile(
-            archive_dir / f"{common.PLUGIN_NAME}_{config['version']}{suffix}.zip",
+            archive_dir / f"{common.PLUGIN_NAME}{suffix}_{config['version']}.zip",
             "w",
             zipfile.ZIP_DEFLATED,
         ) as zip:
@@ -33,8 +33,8 @@ def main():
             zip.write(root_dir / "ReadMe.md", rel_mod_dir / "ReadMe.md")
             zip.write(root_dir / "LICENSE", rel_mod_dir / "LICENSE")
 
-    archive("_plugins_only", lambda file: file.suffix not in (".zip", ".pdb"))
-    archive("", lambda file: file.suffix not in (".pdb",))
+    archive("", lambda file: file.suffix not in (".zip", ".pdb"))
+    archive("_Compiler", lambda file: file.suffix in (".zip",))
 
 
 if __name__ == "__main__":
