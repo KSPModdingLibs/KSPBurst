@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.4.0
+
+* Updated Burst to 1.7.4
+* Better logging when the compiler failed to start
+
 ## 1.5.5.2
 
 * Fix race condition that could freeze KSP loading if the burst compilation output any logs
