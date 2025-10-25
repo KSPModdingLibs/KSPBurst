@@ -258,8 +258,9 @@ namespace KSPBurst
             {
                 started = process.Start();
             }
-            catch (Win32Exception)
+            catch (Exception ex)
             {
+                LogError(ex.ToString());
                 LogErrorFormat(
                     "Are you missing mono installation? https://www.mono-project.com/download/stable/#download-{0}",
                     PathUtil.SelectByPlatform("win", "lin", "mac"));
