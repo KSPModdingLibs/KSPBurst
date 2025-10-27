@@ -276,8 +276,8 @@ namespace KSPBurst
             }
 
             // read from the streams while burst is running to avoid filling stream buffers
-            using var outputRedirect = new StreamRedirect($"{logDir}/info.log");
-            using var errorRedirect = new StreamRedirect($"{logDir}/error.log");
+            using var outputRedirect = new StreamRedirect($"{logDir}/KSPBurst-stdout.log");
+            using var errorRedirect = new StreamRedirect($"{logDir}/KSPBurst-stderr.log");
 
             process.OutputDataReceived += outputRedirect.Write;
             process.ErrorDataReceived += errorRedirect.Write;
