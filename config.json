@@ -3,7 +3,7 @@
     "unityBuildDir": "Unity/KSPBurst/Build",
     "kspMin": "1.12.3",
     "kspMax": "1.12",
-    "version": "1.7.4.0",
+    "version": "1.7.4.1",
     "versionTemplate": "tools/KSPBurst.version.in",
     "unityPackages": [
         "Unity.Burst",

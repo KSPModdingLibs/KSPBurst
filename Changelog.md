@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.4.0
+## 1.7.4.1
 
 * Updated Burst to 1.7.4
 * Better logging when the compiler failed to start

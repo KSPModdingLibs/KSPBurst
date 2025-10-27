@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{38625DD9-F079-4D4A-9CAC-B9C2A84228D8}"
 	ProjectSection(SolutionItems) = preProject
 		Changelog.md = Changelog.md
+		GameData\000_KSPBurst\KSPBurst.version = GameData\000_KSPBurst\KSPBurst.version
 	EndProjectSection
 EndProject
 Global
