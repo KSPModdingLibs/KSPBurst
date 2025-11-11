@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using UniLinq;
+using Unity.Burst;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
@@ -44,6 +45,8 @@ namespace KSPBurst
         private void Awake()
         {
             _mainThread = Thread.CurrentThread;
+
+            var _ = BurstCompiler.IsEnabled; // force static constructors to run, because otherwise they could be invoked on an async thread
 
             PathUtil.Initialize();
             ExtractDir = Path.Combine(PathUtil.KspDir, "PluginData");

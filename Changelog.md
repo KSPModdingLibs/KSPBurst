@@ -1,9 +1,10 @@
 # Changelog
 
-## 1.7.4.1
+## Unreleased
 
 * Updated Burst to 1.7.4
 * Better logging when the compiler failed to start
+* Make sure the static constructor for BurstCompiler is invoked on the main thread
 
 ## 1.5.5.2
 

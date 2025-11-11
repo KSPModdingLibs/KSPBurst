@@ -51,6 +51,9 @@
         <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\UnityEngine*.dll">
             <Private>False</Private>
         </Reference>
+        <Reference Include="$(KSP_DIR)GameData\000_KSPBurst\Plugins\Unity.Burst.dll">
+            <Private>False</Private>
+        </Reference>
     </ItemGroup>
     <ItemGroup>
         <Compile Include="AssemblyUtil.cs" />
