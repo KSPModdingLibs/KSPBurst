@@ -245,8 +245,12 @@ namespace KSPBurst
 
             BurstCompilerResult result = new();
 
+            // write args to a file to avoid exceeding Windows' 32768 character command line limit
+            string argFile = Path.Combine(logDir, "argfile.txt");
+            File.WriteAllText(argFile, string.Join("\n", args));
+
             // run burst
-            var info = new ProcessStartInfo(burstExecutable, string.Join(" ", args))
+            var info = new ProcessStartInfo(burstExecutable, $"@{argFile}")
             {
                 CreateNoWindow = true, // don't need terminal popping up
                 RedirectStandardOutput = true,

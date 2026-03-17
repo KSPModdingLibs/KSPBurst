@@ -23,7 +23,7 @@ namespace KSPBurst
             List<string> args = new()
             {
                 $"--platform={CurrentPlatform}",
-                $"--output=\"{PathUtil.GetRelativePath(PathUtil.OutputLibrary, rootDir)}\""
+                $"--output={PathUtil.GetRelativePath(PathUtil.OutputLibrary, rootDir)}"
             };
             args.AddRange(Options.Select(option => option.MakeOption(node.GetValue(option.Name)))
                 .Where(option => !string.IsNullOrEmpty(option)));
@@ -35,7 +35,7 @@ namespace KSPBurst
 
             AddRootAssemblies(args, AssemblyUtil.KspAndPluginAssemblyPaths(false, rootDir));
             string kspPluginDir = Path.Combine(PathUtil.DataDir, "Managed");
-            args.Add($"--assembly-folder=\"{PathUtil.GetRelativePath(kspPluginDir, rootDir)}\"");
+            args.Add($"--assembly-folder={PathUtil.GetRelativePath(kspPluginDir, rootDir)}");
 
             return args;
         }
@@ -51,11 +51,11 @@ namespace KSPBurst
             foreach (string path in assemblyPaths)
             {
                 string parent = Path.GetDirectoryName(path);
-                args.Add($"--root-assembly=\"{path}\"");
+                args.Add($"--root-assembly={path}");
                 assemblyFolders.Add(parent);
             }
 
-            foreach (string assemblyFolder in assemblyFolders) args.Add($"--assembly-folder=\"{assemblyFolder}\"");
+            foreach (string assemblyFolder in assemblyFolders) args.Add($"--assembly-folder={assemblyFolder}");
         }
 
         public class FlagOption : IOption
