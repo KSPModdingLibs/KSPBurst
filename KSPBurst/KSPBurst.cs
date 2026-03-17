@@ -250,7 +250,7 @@ namespace KSPBurst
             File.WriteAllText(argFile, string.Join("\n", args));
 
             // run burst
-            var info = new ProcessStartInfo(burstExecutable, $"@{argFile}")
+            var info = new ProcessStartInfo(burstExecutable, $"\"@{argFile}\"")
             {
                 CreateNoWindow = true, // don't need terminal popping up
                 RedirectStandardOutput = true,
