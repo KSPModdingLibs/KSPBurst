@@ -20,7 +20,9 @@ def main():
     os.makedirs(archive_dir, exist_ok=True)
 
     def archive(
-        suffix: str, valid: Callable[[pathlib.Path], bool] = lambda _: True
+        suffix: str,
+        valid: Callable[[pathlib.Path], bool] = lambda _: True,
+        include_docs: bool = True,
     ) -> None:
         with zipfile.ZipFile(
             archive_dir / f"{common.PLUGIN_NAME}{suffix}_{config['version']}.zip",
@@ -30,11 +32,12 @@ def main():
             for file in files:
                 if valid(file):
                     zip.write(file, file.relative_to(root_dir))
-            zip.write(root_dir / "ReadMe.md", rel_mod_dir / "ReadMe.md")
-            zip.write(root_dir / "LICENSE", rel_mod_dir / "LICENSE")
+            if include_docs:
+                zip.write(root_dir / "ReadMe.md", rel_mod_dir / "ReadMe.md")
+                zip.write(root_dir / "LICENSE", rel_mod_dir / "LICENSE")
 
     archive("", lambda file: file.suffix not in (".zip", ".pdb"))
-    archive("_Compiler", lambda file: file.suffix in (".zip",))
+    archive("_Compiler", lambda file: file.suffix in (".zip",), include_docs=False)
 
 
 if __name__ == "__main__":
