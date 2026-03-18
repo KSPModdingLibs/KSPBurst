@@ -222,6 +222,10 @@ namespace KSPBurst
             // save command line arguments for later inspection/next run
             File.WriteAllText(cliFile, argStr);
 
+            // clean up log files from any previous compilation before starting a new one
+            File.Delete($"{logDir}/KSPBurst-stdout.log");
+            File.Delete($"{logDir}/KSPBurst-stderr.log");
+
             LogFormat("Burst called with arguments in {0}:\n{1}", cwd, argStr);
             result = RunBurstCompiler(burstExecutable, args, cwd, logDir);
 
