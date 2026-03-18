@@ -46,8 +46,6 @@ namespace KSPBurst
         {
             _mainThread = Thread.CurrentThread;
 
-            var _ = BurstCompiler.IsEnabled; // force static constructors to run, because otherwise they could be invoked on an async thread
-
             PathUtil.Initialize();
             ExtractDir = Path.Combine(PathUtil.KspDir, "PluginData");
         }
@@ -160,6 +158,15 @@ namespace KSPBurst
                     Log($"Deleted burst generated plugin backup {_pluginBackup}");
                 }
             }
+
+            // Force static constructors to run, because otherwise they could be invoked on an async thread.
+            // This needs to happen after burst compilation completes but before anything else
+            // attempts to compile a function pointer on a background thread.
+            if (BurstCompiler.IsEnabled)
+                Log("Burst compilation is enabled");
+            else
+                Log("Burst compilation is disabled");
+
 
             // destroy this object since burst will not be called again
             Destroy(this);
