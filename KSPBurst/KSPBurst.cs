@@ -177,13 +177,17 @@ namespace KSPBurst
                 return result;
             }
 
+            // load config and resolve which assemblies to compile
+            ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}/{PathUtil.ModName}");
+            AssemblyLoader.LoadedAssembly[] burstPlugins = AssemblyUtil.LoadedBurstPlugins();
+            burstPlugins = AssemblyUtil.ApplyAssemblyOverrides(burstPlugins, GameDatabase.Instance.GetConfigNodes("KSPBURST_ASSEMBLY"));
+
             // check if any plugins have changed since last time
-            AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(packageDir);
+            AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(packageDir, burstPlugins);
 
             // load burst command line args
-            ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}");
             string cwd = Directory.GetCurrentDirectory();
-            List<string> args = BurstOptions.LoadArgs(node, cwd);
+            List<string> args = BurstOptions.LoadArgs(node, burstPlugins, cwd);
 
             // output command line arguments to log files
             string logDir = PathUtil.ModLogsDir;
@@ -223,15 +227,29 @@ namespace KSPBurst
 
         // ReSharper disable once ReturnTypeCanBeEnumerable.Local
         [NotNull]
-        private static AssemblyUtil.AssemblyVersionChange[] CollectPluginChanges([NotNull] string cacheDir)
+        private static AssemblyUtil.AssemblyVersionChange[] CollectPluginChanges([NotNull] string cacheDir,
+            [NotNull] AssemblyLoader.LoadedAssembly[] burstPlugins)
         {
             if (string.IsNullOrWhiteSpace(cacheDir))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(cacheDir));
+            if (burstPlugins is null) throw new ArgumentNullException(nameof(burstPlugins));
 
-            AssemblyUtil.AssemblyVersion[] loadedVersions = AssemblyUtil.LoadedPluginVersions();
+            AssemblyUtil.AssemblyVersion[] loadedVersions = AssemblyUtil.LoadedPluginVersions(burstPlugins);
             AssemblyUtil.AssemblyVersion[] cachedVersions = AssemblyUtil.LoadPluginVersionsFromCache(cacheDir);
             AssemblyUtil.AssemblyVersionChange[] changes = AssemblyUtil.ComputeChanges(loadedVersions, cachedVersions);
-            LogFormat("Plugins found:\n{0}", AssemblyUtil.Format(changes));
+            LogFormat(
+                """
+                
+                KSPBurst requires that DLLs wanting to be burst-compiled must have either a KSPAssemblyDependency
+                on KSPBurst or manually opt-in to being compiled by declaring a KSPBURST_ASSEMBLY config.
+                If you aren't seeing your DLL below this is likely the reason why.
+                See https://github.com/KSPModdingLibs/KSPBurst for more information.
+
+                Plugins found:
+                {0}
+                """,
+                AssemblyUtil.Format(changes)
+            );
 
             return changes;
         }
