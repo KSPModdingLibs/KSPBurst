@@ -11,7 +11,7 @@
         <AssemblyName>KSPBurst</AssemblyName>
         <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
         <FileAlignment>512</FileAlignment>
-        <LangVersion>9</LangVersion>
+        <LangVersion>11</LangVersion>
         <StartProgram>$(KSP_DIR)\KSP_x64.exe</StartProgram>
         <StartWorkingDirectory>$(KSP_DIR)</StartWorkingDirectory>
     </PropertyGroup>

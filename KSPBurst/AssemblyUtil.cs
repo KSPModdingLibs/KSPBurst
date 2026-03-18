@@ -25,11 +25,89 @@ namespace KSPBurst
                 .Where(assembly => assembly.path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)).ToArray();
         }
 
-        [NotNull]
-        public static AssemblyVersion[] LoadedPluginVersions()
+        public static bool HasKSPBurstDependency([NotNull] AssemblyLoader.LoadedAssembly loaded)
         {
+            if (loaded is null) throw new ArgumentNullException(nameof(loaded));
+            return loaded.assembly.GetCustomAttributes(typeof(KSPAssemblyDependency), false)
+                .Cast<KSPAssemblyDependency>()
+                .Any(dep => string.Equals(dep.name, PathUtil.ModName, StringComparison.OrdinalIgnoreCase));
+        }
+
+        [NotNull]
+        public static AssemblyLoader.LoadedAssembly[] LoadedBurstPlugins()
+        {
+            return LoadedPlugins().Where(HasKSPBurstDependency).ToArray();
+        }
+
+        [NotNull]
+        public static AssemblyLoader.LoadedAssembly[] ApplyAssemblyOverrides(
+            [NotNull] AssemblyLoader.LoadedAssembly[] burstPlugins,
+            [CanBeNull] ConfigNode[] overrideNodes
+        )
+        {
+            if (burstPlugins is null) throw new ArgumentNullException(nameof(burstPlugins));
+            if (overrideNodes is null || overrideNodes.Length == 0)
+                return burstPlugins;
+
+            AssemblyLoader.LoadedAssembly[] allPlugins = LoadedPlugins();
+            List<AssemblyLoader.LoadedAssembly> result = new(burstPlugins);
+
+            foreach (ConfigNode node in overrideNodes)
+            {
+                string name = null;
+                if (!node.TryGetValue("name", ref name))
+                    continue;
+
+                bool enabled = default;
+                if (!node.TryGetValue("enabled", ref enabled))
+                    enabled = true;
+
+                if (enabled)
+                {
+                    foreach (AssemblyLoader.LoadedAssembly plugin in allPlugins)
+                        if (MatchesAssembly(plugin, name) && !result.Contains(plugin))
+                            result.Add(plugin);
+                }
+                else
+                {
+                    result.RemoveAll(plugin => MatchesAssembly(plugin, name));
+                }
+            }
+
+            return result.ToArray();
+        }
+
+        private static bool MatchesAssembly([NotNull] AssemblyLoader.LoadedAssembly plugin, [NotNull] string name)
+        {
+            return string.Equals(plugin.name, name, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(plugin.dllName, name, StringComparison.OrdinalIgnoreCase) ||
+                   plugin.path.EndsWith(name, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [NotNull]
+        public static string[] BurstPluginAssemblyPaths([NotNull] AssemblyLoader.LoadedAssembly[] plugins,
+            [CanBeNull] string rootDir = null)
+        {
+            if (plugins is null) throw new ArgumentNullException(nameof(plugins));
+            string[] paths = plugins.Select(assembly => assembly.path).ToArray();
+
+            if (string.IsNullOrEmpty(rootDir)) return paths;
+
+            rootDir = Path.GetFullPath(rootDir);
+            for (var i = 0; i < paths.Length; ++i)
+                paths[i] = PathUtil.GetRelativePath(paths[i], rootDir);
+
+            return paths;
+        }
+
+        [NotNull]
+        public static AssemblyVersion[] LoadedPluginVersions(
+            [NotNull] AssemblyLoader.LoadedAssembly[] plugins)
+        {
+            if (plugins is null) throw new ArgumentNullException(nameof(plugins));
             // merge url into name so that multiple DLLs with the same name but different paths can be distinguished
-            return LoadedPlugins().Select(assembly => new AssemblyVersion
+            // only track plugins that depend on KSPBurst since those are the only ones compiled
+            return plugins.Select(assembly => new AssemblyVersion
             {
                 // use dllName instead of name since it's not guaranteed to be unique as it's set from KSPAssembly attribute
                 Url = $"{assembly.url}/{assembly.dllName}", Guid = assembly.assembly.VersionId(),

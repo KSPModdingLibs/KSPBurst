@@ -45,6 +45,20 @@ Burst compatible Unity plugins and their dependencies are also bundled:
 
 [comment]: # (end_packages)
 
+As of 1.7.4.2 KSPBurst will only automatically compile DLLs that have a `KSPAssemblyDependency` on KSPBurst.
+Make sure to add a `KSPAssemblyDependency` attribute on KSPBurst to your DLL or else your jobs or methods
+will not be burst-compiled.
+
+If you cannot take a direct dependency on KSPBurst for whatever reason, you can manually indicate that
+KSPBurst should compile your DLL by creating a `KSPBURST_ASSEMBLY` config node like so:
+
+```
+KSPBURST_ASSEMBLY
+{
+  name = <your DLL's KSPAssemblyName>
+}
+```
+
 ## Configuration Options
 
 All configuration options present in `KSPBurst.cfg` map directly to `bcl.exe` command line options. If `ModuleManager`

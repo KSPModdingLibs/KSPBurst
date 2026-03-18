@@ -15,9 +15,14 @@ namespace KSPBurst
             PathUtil.SelectByPlatform(Platform.Windows, Platform.Linux, Platform.macOS);
 
         [NotNull]
-        public static List<string> LoadArgs([NotNull] ConfigNode node, [CanBeNull] string rootDir)
+        public static List<string> LoadArgs(
+            [NotNull] ConfigNode node,
+            [NotNull] AssemblyLoader.LoadedAssembly[] burstPlugins,
+            [CanBeNull] string rootDir
+        )
         {
             if (node is null) throw new ArgumentNullException(nameof(node));
+            if (burstPlugins is null) throw new ArgumentNullException(nameof(burstPlugins));
             if (string.IsNullOrEmpty(rootDir)) rootDir = Directory.GetCurrentDirectory();
 
             List<string> args = new()
@@ -33,29 +38,42 @@ namespace KSPBurst
                 args.AddRange(node.GetValuesList(option.Name).Select(value => option.MakeOption(value))
                     .Where(o => !string.IsNullOrEmpty(o)));
 
-            AddRootAssemblies(args, AssemblyUtil.KspAndPluginAssemblyPaths(false, rootDir));
+            // only compile assemblies that declare a dependency on KSPBurst (with config overrides applied)
+            AddRootAssemblies(args, AssemblyUtil.BurstPluginAssemblyPaths(burstPlugins, rootDir));
+            // but provide all plugin directories so references can be resolved
+            AddAssemblyFolders(args, AssemblyUtil.KspAndPluginAssemblyPaths(false, rootDir));
             string kspPluginDir = Path.Combine(PathUtil.DataDir, "Managed");
             args.Add($"--assembly-folder={PathUtil.GetRelativePath(kspPluginDir, rootDir)}");
 
             return args;
         }
 
-        public static void AddRootAssemblies([NotNull] ICollection<string> args,
-            [NotNull] IEnumerable<string> assemblyPaths)
+        public static void AddRootAssemblies(
+            [NotNull] ICollection<string> args,
+            [NotNull] IEnumerable<string> assemblyPaths
+        )
         {
             if (args is null) throw new ArgumentNullException(nameof(args));
             if (assemblyPaths is null) throw new ArgumentNullException(nameof(assemblyPaths));
 
-            // use hashset to store directories of all libraries
+            foreach (string path in assemblyPaths)
+                args.Add($"--root-assembly={path}");
+        }
+
+        public static void AddAssemblyFolders(
+            [NotNull] ICollection<string> args,
+            [NotNull] IEnumerable<string> assemblyPaths
+        )
+        {
+            if (args is null) throw new ArgumentNullException(nameof(args));
+            if (assemblyPaths is null) throw new ArgumentNullException(nameof(assemblyPaths));
+
             HashSet<string> assemblyFolders = new();
             foreach (string path in assemblyPaths)
-            {
-                string parent = Path.GetDirectoryName(path);
-                args.Add($"--root-assembly={path}");
-                assemblyFolders.Add(parent);
-            }
+                assemblyFolders.Add(Path.GetDirectoryName(path));
 
-            foreach (string assemblyFolder in assemblyFolders) args.Add($"--assembly-folder={assemblyFolder}");
+            foreach (string assemblyFolder in assemblyFolders)
+                args.Add($"--assembly-folder={assemblyFolder}");
         }
 
         public class FlagOption : IOption
