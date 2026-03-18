@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 1.7.4.2
+* KSPBurst now only compiles DLLs that have a KSPAssemblyDependency on KSPBurst
+  or that otherwise opt-in by specifying a `KSPBURST_ASSEMBLY` config node.
+* Fixed an issue where large installs would create a command line larger than
+  the maximum on windows (32767 characters).
+* Fixed an issue introduced in 1.7.4.1 where the first game start would not
+  use burst-compiled methods, despite compilation actually succeeding.
+
+## 1.7.4.1
 * Updated Burst to 1.7.4
 * Better logging when the compiler failed to start
 * Make sure the static constructor for BurstCompiler is invoked on the main thread
