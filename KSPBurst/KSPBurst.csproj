@@ -1,82 +1,89 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-    <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-    <PropertyGroup>
-        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-        <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-        <ProjectGuid>{62AF95D6-FE71-485C-92C2-3F6B79F26B28}</ProjectGuid>
-        <OutputType>Library</OutputType>
-        <AppDesignerFolder>Properties</AppDesignerFolder>
-        <RootNamespace>KSPBurst</RootNamespace>
-        <AssemblyName>KSPBurst</AssemblyName>
-        <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-        <FileAlignment>512</FileAlignment>
-        <LangVersion>11</LangVersion>
-        <StartProgram>$(KSP_DIR)\KSP_x64.exe</StartProgram>
-        <StartWorkingDirectory>$(KSP_DIR)</StartWorkingDirectory>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-        <PlatformTarget>AnyCPU</PlatformTarget>
-        <DebugSymbols>true</DebugSymbols>
-        <DebugType>portable</DebugType>
-        <Optimize>false</Optimize>
-        <OutputPath>bin\Debug\</OutputPath>
-        <DefineConstants>DEBUG;TRACE</DefineConstants>
-        <ErrorReport>prompt</ErrorReport>
-        <WarningLevel>4</WarningLevel>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-        <PlatformTarget>AnyCPU</PlatformTarget>
-        <DebugType>portable</DebugType>
-        <Optimize>true</Optimize>
-        <OutputPath>bin\Release\</OutputPath>
-        <DefineConstants>TRACE</DefineConstants>
-        <ErrorReport>prompt</ErrorReport>
-        <WarningLevel>4</WarningLevel>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <DebugSymbols>true</DebugSymbols>
-    </PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="KSPBurst.MSBuildTasks.targets" />
+  <PropertyGroup>
+    <AssemblyName>KSPBurst</AssemblyName>
+    <RootNamespace>KSPBurst</RootNamespace>
+    <Description>Provides the Unity Burst compiler for KSP mods</Description>
+
+    <!-- Don't auto-generate AssemblyInfo - we maintain Properties/AssemblyInfo.cs manually -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+    <!-- KSPBuildTools settings -->
+    <KSPBT_ModRoot>$(GameDataOutDir)</KSPBT_ModRoot>
+    <KSPBT_ModPluginFolder>Plugins</KSPBT_ModPluginFolder>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="KSPBuildTools" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0-preview.2.21154.6" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shipped with the mod - reference from GameData -->
+    <Reference Include="System.IO.Compression">
+      <HintPath>$(GameDataOutDir)\Plugins\System.IO.Compression.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.IO.Compression.FileSystem">
+      <HintPath>$(GameDataOutDir)\Plugins\System.IO.Compression.FileSystem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Unity.Burst">
+      <HintPath>$(GameDataOutDir)\Plugins\Unity.Burst.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+
+    <!-- KSP assemblies - resolved via ReferencePath in KSPBurst.props.user -->
+    <Reference Include="Assembly-CSharp">
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Copy .pdb alongside the DLL in the Plugins folder -->
+  <Target Name="CopyExtrasToPluginFolder" AfterTargets="KSPBT_CopyDLLsToPluginFolder">
     <ItemGroup>
-        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\Assembly-CSharp.dll">
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.Extensions.FileSystemGlobbing, Version=6.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60">
-            <HintPath>..\packages\Microsoft.Extensions.FileSystemGlobbing.6.0.0-preview.2.21154.6\lib\net461\Microsoft.Extensions.FileSystemGlobbing.dll</HintPath>
-            <Private>True</Private>
-        </Reference>
-        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\mscorlib.dll" />
-        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\System.dll" />
-        <Reference Include="System.IO.Compression" />
-        <Reference Include="System.IO.Compression.FileSystem" />
-        <Reference Include="$(KSP_DIR)$(DATA_DIRNAME)\Managed\UnityEngine*.dll">
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="$(KSP_DIR)GameData\000_KSPBurst\Plugins\Unity.Burst.dll">
-            <Private>False</Private>
-        </Reference>
+      <_ExtrasToCopy Include="$(TargetDir)/**/*.pdb" />
     </ItemGroup>
+    <Copy SourceFiles="@(_ExtrasToCopy)"
+          DestinationFolder="$(KSPBT_ModRoot)/$(KSPBT_ModPluginFolder)/%(RecursiveDir)" />
+  </Target>
+
+  <!--
+    Copy Unity plugin DLLs from the Unity build output into GameData, if the build exists.
+    This replaces the copy_unity_plugins step from tools/post_build.py.
+  -->
+  <Target Name="CopyUnityPlugins" AfterTargets="KSPBT_CopyDLLsToPluginFolder"
+      Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Build')">
     <ItemGroup>
-        <Compile Include="AssemblyUtil.cs" />
-        <Compile Include="BurstLoadingSystem.cs" />
-        <Compile Include="BurstOptions.cs" />
-        <Compile Include="Compression.cs" />
-        <Compile Include="KSPBurst.cs" />
-        <Compile Include="IOption.cs" />
-        <Compile Include="PathUtil.cs" />
-        <Compile Include="Properties\AssemblyInfo.cs" />
+      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Burst.dll" />
+      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Mathematics.dll" />
+      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Collections.dll" />
+      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Jobs.dll" />
+      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\System.Runtime.CompilerServices.Unsafe.dll" />
+      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\System.Runtime.dll" />
     </ItemGroup>
+    <Copy SourceFiles="@(_UnityDlls)"
+          DestinationFolder="$(KSPBT_ModRoot)\Plugins"
+          SkipUnchangedFiles="true" />
+
+    <!-- Add FileVersion to DLLs that Unity ships without one, which confuses KSP -->
     <ItemGroup>
-        <None Include="packages.config" />
+      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll" />
+      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\Unity.Collections.dll" />
+      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" />
+      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\System.Runtime.CompilerServices.Unsafe.dll" />
     </ItemGroup>
-    <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-    <PropertyGroup>
-        <PostBuildEvent>python $(SolutionDir)/tools/post_build.py -t "$(TargetPath)"</PostBuildEvent>
-    </PropertyGroup>
-    <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
-         Other similar extension points exist, see Microsoft.Common.targets.
-    <Target Name="BeforeBuild">
-    </Target>
-    <Target Name="AfterBuild">
-    </Target>
-    -->
+    <AddFileVersion Files="@(_DllsNeedingVersion)" Version="1.0.0.0" />
+  </Target>
+
+  <Target Name="PostClean" AfterTargets="Clean">
+    <RemoveDir Directories="$(ProjectDir)\bin" />
+  </Target>
 </Project>

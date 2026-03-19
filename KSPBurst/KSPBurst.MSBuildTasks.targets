@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    AddFileVersion: MSBuild task that adds a VS_VERSION_INFO resource to a DLL that lacks one.
+    Equivalent to the ResourceHacker-based fixup in tools/pe.py.
+
+    Parameters:
+      Files   - ITaskItem[] - DLL files to patch
+      Version - string      - Version string to embed (default "1.0.0.0")
+  -->
+  <UsingTask
+    TaskName="AddFileVersion"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Version ParameterType="System.String" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs"><![CDATA[
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+
+public class AddFileVersion : Task
+{
+    [Required]
+    public ITaskItem[] Files { get; set; }
+
+    public string Version { get; set; } = "1.0.0.0";
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern IntPtr BeginUpdateResource(string pFileName, bool bDeleteExistingResources);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool UpdateResource(
+        IntPtr hUpdate, IntPtr lpType, IntPtr lpName,
+        ushort wLanguage, byte[] lpData, uint cbData);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool EndUpdateResource(IntPtr hUpdate, bool fDiscard);
+
+    public override bool Execute()
+    {
+        bool success = true;
+        string ver = string.IsNullOrEmpty(Version) ? "1.0.0.0" : Version;
+
+        foreach (var item in Files)
+        {
+            string path = item.GetMetadata("FullPath");
+            if (!File.Exists(path))
+            {
+                Log.LogWarning("AddFileVersion: file not found: " + path);
+                continue;
+            }
+
+            try
+            {
+                // Clear read-only attribute so EndUpdateResource can replace the file.
+                File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
+
+                byte[] data = BuildVersionResource(ver);
+                ApplyVersionResource(path, data);
+                Log.LogMessage(MessageImportance.Normal,
+                    "AddFileVersion: set FileVersion " + ver + " on " + Path.GetFileName(path));
+            }
+            catch (Exception ex)
+            {
+                Log.LogError("AddFileVersion: failed to patch " + path + ": " + ex.Message);
+                success = false;
+            }
+        }
+
+        return success;
+    }
+
+    private static void ApplyVersionResource(string filePath, byte[] data)
+    {
+        // RT_VERSION = 16, resource name = 1, language = English US (0x0409)
+        // Delete existing resources first — some Unity DLLs ship with a malformed
+        // RT_VERSION that causes EndUpdateResource to fail if we try to merge.
+        IntPtr h = BeginUpdateResource(filePath, true);
+        if (h == IntPtr.Zero)
+            throw new InvalidOperationException(
+                "BeginUpdateResource failed: " + Marshal.GetLastWin32Error());
+
+        bool ok = UpdateResource(h, (IntPtr)16, (IntPtr)1, 0x0409, data, (uint)data.Length);
+        if (!ok)
+        {
+            EndUpdateResource(h, true); // discard
+            throw new InvalidOperationException(
+                "UpdateResource failed: " + Marshal.GetLastWin32Error());
+        }
+
+        if (!EndUpdateResource(h, false))
+            throw new InvalidOperationException(
+                "EndUpdateResource failed: " + Marshal.GetLastWin32Error());
+    }
+
+    // Builds a VS_VERSION_INFO binary resource for the given version string.
+    // The structure follows the layout documented in the Windows SDK:
+    //   https://learn.microsoft.com/en-us/windows/win32/menurc/vs-versioninfo
+    private static byte[] BuildVersionResource(string version)
+    {
+        string[] parts = (version + ".0.0.0").Split('.');
+        uint major = uint.Parse(parts[0]);
+        uint minor = uint.Parse(parts[1]);
+        uint patch = uint.Parse(parts[2]);
+        uint build = uint.Parse(parts[3]);
+
+        uint fileVerMS = (major << 16) | minor;
+        uint fileVerLS = (patch << 16) | build;
+
+        using (var ms = new MemoryStream())
+        using (var w = new BinaryWriter(ms))
+        {
+            // VS_VERSIONINFO (wValueLength = 52 = sizeof VS_FIXEDFILEINFO, wType = 0 binary)
+            long viStart = BeginStruct(w, ms, 52, 0, "VS_VERSION_INFO");
+
+            // VS_FIXEDFILEINFO
+            w.Write(0xFEEF04BDu); // dwSignature
+            w.Write(0x00010000u); // dwStrucVersion
+            w.Write(fileVerMS);   // dwFileVersionMS
+            w.Write(fileVerLS);   // dwFileVersionLS
+            w.Write(fileVerMS);   // dwProductVersionMS
+            w.Write(fileVerLS);   // dwProductVersionLS
+            w.Write(0x3Fu);       // dwFileFlagsMask
+            w.Write(0u);          // dwFileFlags
+            w.Write(0x00040004u); // dwFileOS (VOS_NT_WINDOWS32)
+            w.Write(0x00000002u); // dwFileType (VFT_DLL)
+            w.Write(0u);          // dwFileSubtype
+            w.Write(0u);          // dwFileDateMS
+            w.Write(0u);          // dwFileDateLS
+
+            // StringFileInfo
+            long sfiStart = BeginStruct(w, ms, 0, 1, "StringFileInfo");
+            {
+                // StringTable - language/codepage "040904B0" = English US / Unicode
+                long stStart = BeginStruct(w, ms, 0, 1, "040904B0");
+                {
+                    WriteStringEntry(w, ms, "FileVersion",    version);
+                    WriteStringEntry(w, ms, "ProductVersion", version);
+                }
+                EndStruct(w, ms, stStart);
+            }
+            EndStruct(w, ms, sfiStart);
+
+            // VarFileInfo
+            long vfiStart = BeginStruct(w, ms, 0, 1, "VarFileInfo");
+            {
+                // Translation: English US (0x0409), Unicode codepage (0x04B0)
+                long varStart = BeginStruct(w, ms, 4, 0, "Translation");
+                w.Write(0x04B00409u);
+                EndStruct(w, ms, varStart);
+            }
+            EndStruct(w, ms, vfiStart);
+
+            EndStruct(w, ms, viStart);
+
+            return ms.ToArray();
+        }
+    }
+
+    // Writes a sub-structure header (wLength placeholder, wValueLength, wType, szKey)
+    // and pads to a 4-byte boundary. Returns the position of the wLength field.
+    private static long BeginStruct(BinaryWriter w, MemoryStream ms,
+        ushort valueLen, ushort type, string key)
+    {
+        long pos = ms.Position;
+        w.Write((ushort)0); // wLength placeholder - back-patched by EndStruct
+        w.Write(valueLen);  // wValueLength
+        w.Write(type);      // wType
+        foreach (char c in key) w.Write((ushort)c);
+        w.Write((ushort)0); // null terminator
+        Align4(w, ms);
+        return pos;
+    }
+
+    // Pads to 4-byte boundary then back-patches the wLength field written by BeginStruct.
+    private static void EndStruct(BinaryWriter w, MemoryStream ms, long startPos)
+    {
+        Align4(w, ms);
+        long endPos = ms.Position;
+        ms.Position = startPos;
+        w.Write((ushort)(endPos - startPos));
+        ms.Position = endPos;
+    }
+
+    // Writes a String entry: header + Unicode key + Unicode value (both null-terminated).
+    // wValueLength is the value length in WCHARs including the null terminator.
+    private static void WriteStringEntry(BinaryWriter w, MemoryStream ms,
+        string key, string value)
+    {
+        long startPos = BeginStruct(w, ms, (ushort)(value.Length + 1), 1, key);
+        foreach (char c in value) w.Write((ushort)c);
+        w.Write((ushort)0); // null terminator
+        EndStruct(w, ms, startPos);
+    }
+
+    private static void Align4(BinaryWriter w, MemoryStream ms)
+    {
+        while (ms.Position % 4 != 0)
+            w.Write((byte)0);
+    }
+}
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+</Project>

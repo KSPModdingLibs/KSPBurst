@@ -2,8 +2,13 @@
 bin/
 obj/
 /packages/
+nuget.dgspec.json
+*.nuget.props
+*.nuget.targets
 __pycache__/
 *.user
+
+packages.lock.json
 
 # archives
 /GameData/000_KSPBurst/*burst*@*
