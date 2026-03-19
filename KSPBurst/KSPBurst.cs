@@ -336,7 +336,9 @@ namespace KSPBurst
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(cacheDir));
             if (burstPlugins is null) throw new ArgumentNullException(nameof(burstPlugins));
 
-            AssemblyUtil.AssemblyVersion[] loadedVersions = AssemblyUtil.LoadedPluginVersions(burstPlugins);
+            AssemblyLoader.LoadedAssembly[] dependencies = AssemblyUtil.GetDependencies(burstPlugins);
+            AssemblyUtil.AssemblyVersion[] loadedVersions =
+                AssemblyUtil.LoadedPluginVersions(burstPlugins.Concat(dependencies).ToArray());
             AssemblyUtil.AssemblyVersion[] cachedVersions = AssemblyUtil.LoadPluginVersionsFromCache(cacheDir);
             AssemblyUtil.AssemblyVersionChange[] changes = AssemblyUtil.ComputeChanges(loadedVersions, cachedVersions);
             LogFormat(

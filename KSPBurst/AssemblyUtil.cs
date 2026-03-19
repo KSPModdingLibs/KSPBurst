@@ -85,6 +85,32 @@ namespace KSPBurst
         }
 
         [NotNull]
+        public static AssemblyLoader.LoadedAssembly[] GetDependencies(
+            [NotNull] AssemblyLoader.LoadedAssembly[] plugins)
+        {
+            if (plugins is null) throw new ArgumentNullException(nameof(plugins));
+
+            Dictionary<string, AssemblyLoader.LoadedAssembly> loadedByName = LoadedPlugins()
+                .ToDictionary(a => a.assembly.GetName().Name, a => a, StringComparer.OrdinalIgnoreCase);
+
+            HashSet<string> pluginNames = plugins
+                .Select(p => p.assembly.GetName().Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            HashSet<AssemblyLoader.LoadedAssembly> dependencies = new();
+
+            foreach (AssemblyLoader.LoadedAssembly plugin in plugins)
+            foreach (AssemblyName refName in plugin.assembly.GetReferencedAssemblies())
+            {
+                if (pluginNames.Contains(refName.Name)) continue;
+                if (loadedByName.TryGetValue(refName.Name, out AssemblyLoader.LoadedAssembly dep))
+                    dependencies.Add(dep);
+            }
+
+            return dependencies.ToArray();
+        }
+
+        [NotNull]
         public static string[] BurstPluginAssemblyPaths([NotNull] AssemblyLoader.LoadedAssembly[] plugins,
             [CanBeNull] string rootDir = null)
         {
