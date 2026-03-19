@@ -72,7 +72,7 @@ def update_readme(config: dict) -> None:
         )
 
         # remove private info
-        usage = re.sub(r"Users/\w+", "Users/<username>", usage)
+        usage = re.sub(r"Users/[^//]+", "Users/<username>", usage)
 
         replacements.append(
             (

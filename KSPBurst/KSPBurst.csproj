@@ -77,14 +77,14 @@
     Zip the com.unity.burst@* package from the Unity PackageCache into the mod root.
     Equivalent to the archive_burst step in the old tools/post_build.py.
   -->
-  <Target Name="ArchiveBurst" AfterTargets="CopyUnityPlugins"
+  <Target Name="ArchiveBurst" AfterTargets="KSPBT_CopyDLLsToPluginFolder"
       Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache')">
     <ItemGroup>
-      <_BurstPackageDir Include="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache\com.unity.burst@*" />
+      <_BurstPackageManifest Include="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache\com.unity.burst@*\package.json" />
     </ItemGroup>
     <ArchiveBurstPackage
-        Condition="'@(_BurstPackageDir)' != ''"
-        SourceDir="@(_BurstPackageDir)"
+        Condition="'@(_BurstPackageManifest)' != ''"
+        SourceDir="%(RootDir)%(Directory)"
         OutputDir="$(KSPBT_ModRoot)" />
   </Target>
 
