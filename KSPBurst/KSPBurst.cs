@@ -54,19 +54,46 @@ namespace KSPBurst
         {
             // hide the burst plugin from unity until burst compiler finishes
             string library = PathUtil.OutputLibraryPath;
-            _pluginBackup = library + ".bak";
 
-            if (File.Exists(library))
+            // Generate a new backup name with every invocation so that permission issues
+            // on old backups do not break everything.
+            string hash = Guid.NewGuid().ToString("N").Substring(0, 8);
+            string backup = $"{library}.{hash}.bak";
+
+            // Make a best-effort attempt to clean up old backups.
+            try
             {
-                // delete possible remnant from the last failed time
-                if (File.Exists(_pluginBackup)) File.Delete(_pluginBackup);
-
-                File.Move(library, _pluginBackup);
-                Log($"Backed up burst generated plugin to {_pluginBackup}");
+                DeleteOldBackups();
             }
-            else if (!File.Exists(_pluginBackup))
+            catch (Exception e)
             {
-                _pluginBackup = null;
+                Debug.LogWarning($"[KSPBurst] Failed to delete old backups: {e}");
+            }
+
+            _pluginBackup = null;
+
+            try
+            {
+                File.Move(library, backup);
+                Log($"Backed up burst generated plugin to {backup}");
+                _pluginBackup = backup;
+            }
+            catch (FileNotFoundException)
+            {
+                // The plugin doesn't exist, nothing we need to do.
+            }
+            catch (Exception e)
+            {
+                LogError($"Failed to backup burst plugin: {e}");
+                
+                try
+                {
+                    File.Delete(library);
+                }
+                catch (Exception e2)
+                {
+                    LogError($"Failed to delete burst plugin! Loaded plugin may be invalid: {e2}");
+                }
             }
 
             // if there's no ModuleManager, generate burst immediately since config options cannot be patched
@@ -84,6 +111,24 @@ namespace KSPBurst
             StartCoroutine(BurstCompile());
         }
 
+        private void DeleteOldBackups()
+        {
+            string library = PathUtil.OutputLibraryPath;
+            string dir = Path.GetDirectoryName(library);
+            string name = Path.GetFileName(library);
+
+            foreach (string backup in Directory.GetFiles(dir, $"{name}.*.bak"))
+            {
+                try
+                {
+                    File.Delete(backup);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[KSPBurst] Failed to delete old backup file {backup}: {e}");
+                }
+            }
+        }
         private IEnumerator BurstCompile()
         {
             Status = CompilerStatus.Started;
