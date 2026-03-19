@@ -218,58 +218,28 @@ Usage: bcl.exe [options]
 
 ### Prerequisites
 
-1. KSP installation
-2. python
-3. Unity Editor 2019.2.2f1 (if building Unity packages)
+1. The `dotnet` CLI
+2. A KSP installation
+3. Python 3 (for packaging and version tooling)
+4. Unity Editor 2019.4.14f1 (only if rebuilding Unity packages)
 
 ### Configuration
 
-Tools read mod configuration options from `config.json`, users should create `config.json.user` and override the values
-there.
+Tools read mod configuration options from `config.json`; create `config.json.user` in the repository root to override
+values locally.
 
 ### Tools
 
-`tools` contains python scripts:
+`tools` contains Python scripts:
 
-| Script          | Description                                                                                                      |
-| --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `post_build.py` | copy libraries to the mod directory, archive the Burst package if it exists and copy the mod to KSP installation |
-| `version.py`    | update version information in source files and ReadMe                                                            |
-| `package.py`    | package mod into an archive at `archives/`, outputs 2 versions, one with and one without the Burst compiler      |
+| Script       | Description                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| `version.py` | update version information in source files and ReadMe                                                       |
+| `package.py` | package mod into an archive at `archives/`, outputs 2 versions, one with and one without the Burst compiler |
 
 ### Building the Mod
 
-1. Clone KSPBurst  
-2. Create `Directory.Build.props.user` in the root directory with
-
-    ```xml
-    <Project>
-      <PropertyGroup>
-        <KSP_DIR>path to KSP</KSP_DIR>
-      </PropertyGroup>
-    </Project>
-    ```
-
-   Depending on the platform you may also need to set `DATA_DIRNAME` to match your installation.
-3. If not building Unity packages AND you've built the unity packages at least once, go to to step 7
-4. Open Unity project at `Unity/KSPBurst` in Unity Editor  
-   You may hit compile errors related to undefined build targets.  These are typically wrapped in `#if UNITY_2019_4_OR_NEWER`; etc.  Simply change the failing ones to `#if false`.
-5. Build the Unity project and note the build directory
-6. Create `config.json.user` in root directory with
-
-    ```json
-    {
-      "unityBuildDir": "<relative path to unity build directory in step 5>"
-    }
-    ```
-
-7. Build `KSPBurst` with your IDE or from command line, the mod will be copied your KSP installation. If the burst
-   package is present in Unity directory, it may take a while to archive it the first time.
-
-   * Note: `Unity.Burst.Unsafe.dll` is missing version resource so KSP 1.12 crashes on loading, only way to fix this
-     issue that also works on Linux is to add a new version resource from Visual Studio manually, `ResourceHacker` will
-     not be enough. For this reason, `Unity.Burst.Unsafe.dll` is not copied from the Unity build directory
-     automatically.
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
