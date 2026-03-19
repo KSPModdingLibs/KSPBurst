@@ -16,10 +16,6 @@
   <ItemGroup>
     <PackageReference Include="KSPBuildTools" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0-preview.2.21154.6" />
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -66,21 +62,30 @@
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Mathematics.dll" />
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Collections.dll" />
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Jobs.dll" />
-      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\System.Runtime.CompilerServices.Unsafe.dll" />
-      <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\System.Runtime.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(_UnityDlls)"
           DestinationFolder="$(KSPBT_ModRoot)\Plugins"
           SkipUnchangedFiles="true" />
 
     <!-- Add FileVersion to DLLs that Unity ships without one, which confuses KSP -->
+    <AddFileVersion Files="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll" Version="0.0.0.0" />
+    <AddFileVersion Files="$(KSPBT_ModRoot)\Plugins\Unity.Collections.dll" Version="0.0.0.0" />
+    <AddFileVersion Files="$(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" Version="0.0.0.0" />
+  </Target>
+
+  <!--
+    Zip the com.unity.burst@* package from the Unity PackageCache into the mod root.
+    Equivalent to the archive_burst step in the old tools/post_build.py.
+  -->
+  <Target Name="ArchiveBurst" AfterTargets="CopyUnityPlugins"
+      Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache')">
     <ItemGroup>
-      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll" />
-      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\Unity.Collections.dll" />
-      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" />
-      <_DllsNeedingVersion Include="$(KSPBT_ModRoot)\Plugins\System.Runtime.CompilerServices.Unsafe.dll" />
+      <_BurstPackageDir Include="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache\com.unity.burst@*" />
     </ItemGroup>
-    <AddFileVersion Files="@(_DllsNeedingVersion)" Version="1.0.0.0" />
+    <ArchiveBurstPackage
+        Condition="'@(_BurstPackageDir)' != ''"
+        SourceDir="@(_BurstPackageDir)"
+        OutputDir="$(KSPBT_ModRoot)" />
   </Target>
 
   <Target Name="PostClean" AfterTargets="Clean">

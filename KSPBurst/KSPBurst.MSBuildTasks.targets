@@ -210,4 +210,84 @@ public class AddFileVersion : Task
     </Task>
   </UsingTask>
 
+
+  <!--
+    ArchiveBurstPackage: MSBuild task that zips a com.unity.burst@* package directory
+    into the mod root, mirroring the archive_burst step from the old tools/post_build.py.
+
+    The zip uses "package/<relative-path>" entry names to match the layout of the
+    official Unity package tarballs that Burst expects at runtime.
+
+    If the destination archive already exists it is skipped. Any older
+    com.unity.burst@*.zip files in OutputDir are removed before creating a new one.
+
+    Parameters:
+      SourceDir  - string - Path to the com.unity.burst@* package directory
+      OutputDir  - string - Destination directory for the zip (the mod root)
+  -->
+  <UsingTask
+    TaskName="ArchiveBurstPackage"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <SourceDir ParameterType="System.String" Required="true" />
+      <OutputDir ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs"><![CDATA[
+using System;
+using System.IO;
+using System.IO.Compression;
+using Microsoft.Build.Framework;
+using Microsoft.Build.Utilities;
+
+public class ArchiveBurstPackage : Task
+{
+    [Required]
+    public string SourceDir { get; set; }
+
+    [Required]
+    public string OutputDir { get; set; }
+
+    public override bool Execute()
+    {
+        string src = SourceDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string packageName = Path.GetFileName(src);
+        string zipPath = Path.Combine(OutputDir, packageName + ".zip");
+
+        if (File.Exists(zipPath))
+        {
+            Log.LogMessage(MessageImportance.Normal,
+                "ArchiveBurstPackage: archive already up-to-date, skipping: " + Path.GetFileName(zipPath));
+            return true;
+        }
+
+        // Remove stale archives from previous versions.
+        foreach (string old in Directory.GetFiles(OutputDir, "com.unity.burst@*.zip"))
+        {
+            Log.LogMessage(MessageImportance.Normal,
+                "ArchiveBurstPackage: removing old archive: " + Path.GetFileName(old));
+            File.Delete(old);
+        }
+
+        Log.LogMessage(MessageImportance.Normal,
+            "ArchiveBurstPackage: creating " + Path.GetFileName(zipPath));
+
+        using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+        {
+            foreach (string file in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+            {
+                string relative = file.Substring(src.Length + 1).Replace('\\', '/');
+                zip.CreateEntryFromFile(file, "package/" + relative, CompressionLevel.Optimal);
+            }
+        }
+
+        Log.LogMessage(MessageImportance.Normal, "ArchiveBurstPackage: done");
+        return true;
+    }
+}
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
 </Project>
