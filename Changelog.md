@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.7.4.4
+* Added all version info metadata to `Unity.*` dlls.
+
 ## 1.7.4.3
 * Upgraded Unity.Collections to v0.8.0-preview.5
 * Upgraded Unity.Jobs to 0.2.9-preview.15
