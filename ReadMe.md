@@ -39,9 +39,9 @@ Burst compatible Unity plugins and their dependencies are also bundled:
 [comment]: # (begin_packages)
 
 * [Unity.Burst 1.7.4](https://docs.unity3d.com/Packages/com.unity.burst@1.7/manual/index.html)  
-* [Unity.Mathematics 1.2.1](https://docs.unity3d.com/Packages/com.unity.mathematics@1.2/manual/index.html)  
-* [Unity.Collections 0.1.1-preview](https://docs.unity3d.com/Packages/com.unity.collections@0.1/manual/index.html)  
-* [Unity.Jobs 0.1.1-preview](https://docs.unity3d.com/Packages/com.unity.jobs@0.1/manual/index.html)  
+* [Unity.Mathematics 1.2.6](https://docs.unity3d.com/Packages/com.unity.mathematics@1.2/manual/index.html)  
+* [Unity.Collections 0.8.0-preview.5](https://docs.unity3d.com/Packages/com.unity.collections@0.8/manual/index.html)  
+* [Unity.Jobs 0.2.9-preview.15](https://docs.unity3d.com/Packages/com.unity.jobs@0.2/manual/index.html)  
 
 [comment]: # (end_packages)
 

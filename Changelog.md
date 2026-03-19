@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.7.4.3
+* Upgraded Unity.Collections to v0.8.0-preview.5
+* Upgraded Unity.Jobs to 0.2.9-preview.15
+* Upgraded Unity.Mathematics to 1.2.6
+* KSPBurst now includes a randomized hash so that old locked versions do not
+  result in errors.
+* KSPBurst is now a bit more resilient to cases where the burst lib is locked.
+* KSPBurst now checks the hash of the burst dll in case it has been changed by
+  other KSP instances sharing the same KSP_x64_Data folder.
+* Burst-compiled code now has minimal debug info enabled by default.
+
 ## 1.7.4.2
 * KSPBurst now only compiles DLLs that have a KSPAssemblyDependency on KSPBurst
   or that otherwise opt-in by specifying a `KSPBURST_ASSEMBLY` config node.
