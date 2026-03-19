@@ -14,6 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" PrivateAssets="all" ExcludeAssets="compile;runtime" GeneratePathProperty="true" />
     <PackageReference Include="KSPBuildTools" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0-preview.2.21154.6" />
   </ItemGroup>
@@ -67,10 +68,25 @@
           DestinationFolder="$(KSPBT_ModRoot)\Plugins"
           SkipUnchangedFiles="true" />
 
-    <!-- Add FileVersion to DLLs that Unity ships without one, which confuses KSP -->
-    <AddFileVersion Files="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll" Version="0.0.0.0" />
-    <AddFileVersion Files="$(KSPBT_ModRoot)\Plugins\Unity.Collections.dll" Version="0.0.0.0" />
-    <AddFileVersion Files="$(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" Version="0.0.0.0" />
+    <!--
+      Patch Unity DLLs to carry their real package version in:
+        - CLR AssemblyVersion (numeric 4-part)
+        - CLR AssemblyFileVersion attribute (full semver string)
+        - Win32 PE VS_VERSION_INFO resource (numeric 4-part)
+      Versions are read from each package's package.json in the Unity PackageCache.
+    -->
+    <ItemGroup>
+      <_UnityDllsToPatch Include="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll;
+                                  $(KSPBT_ModRoot)\Plugins\Unity.Collections.dll;
+                                  $(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" />
+      <_UnityDllsExist Include="@(_UnityDllsToPatch)" Condition="Exists('%(Identity)')" />
+    </ItemGroup>
+
+    <PatchAssemblyVersion Files="@(_UnityDllsExist)" Version="$(Version)"
+                          PackageCacheDir="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache"
+                          LibPaths="$(KSPBT_ModRoot)\Plugins;$(KSPBT_ManagedPath)"
+                          IntermediateDir="$(IntermediateOutputPath)"
+                          Condition="'@(_UnityDllsExist)' != ''" />
   </Target>
 
   <!--

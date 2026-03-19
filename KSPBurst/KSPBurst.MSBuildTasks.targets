@@ -2,36 +2,60 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
   <!--
-    AddFileVersion: MSBuild task that adds a VS_VERSION_INFO resource to a DLL that lacks one.
-    Equivalent to the ResourceHacker-based fixup in tools/pe.py.
+    PatchAssemblyVersion: patches a managed DLL to carry a proper version everywhere:
+      1. CLR AssemblyVersion  (assembly identity)
+      2. CLR AssemblyFileVersion attribute  (read by .NET FileVersionInfo)
+      3. Win32 VS_VERSION_INFO PE resource  (read by Windows Explorer / KSP)
+
+    Uses Mono.Cecil for (1) and (2), and the Windows UpdateResource API for (3).
+    Unlike the old AddFileVersion task this does NOT delete all existing Win32
+    resources — it only replaces the RT_VERSION block.
 
     Parameters:
-      Files   - ITaskItem[] - DLL files to patch
-      Version - string      - Version string to embed (default "1.0.0.0")
+      Files           - ITaskItem[] - DLL files to patch
+      Version         - string      - Fallback version string (default "1.0.0.0")
+      PackageCacheDir - string      - Unity PackageCache directory; when set, the
+                                      version for each DLL is read from the matching
+                                      com.unity.* package's package.json instead of
+                                      using Version
   -->
   <UsingTask
-    TaskName="AddFileVersion"
+    TaskName="PatchAssemblyVersion"
     TaskFactory="RoslynCodeTaskFactory"
     AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
       <Version ParameterType="System.String" />
+      <LibPaths ParameterType="System.String" />
+      <PackageCacheDir ParameterType="System.String" />
+      <IntermediateDir ParameterType="System.String" />
     </ParameterGroup>
     <Task>
+      <Reference Include="$(PkgMono_Cecil)/lib/net40/Mono.Cecil.dll" />
       <Code Type="Class" Language="cs"><![CDATA[
 using System;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using Microsoft.Build.Framework;
 using Microsoft.Build.Utilities;
+using Mono.Cecil;
 
-public class AddFileVersion : Task
+public class PatchAssemblyVersion : Task
 {
     [Required]
     public ITaskItem[] Files { get; set; }
 
     public string Version { get; set; } = "1.0.0.0";
 
+    public string LibPaths { get; set; }
+
+    public string PackageCacheDir { get; set; }
+
+    public string IntermediateDir { get; set; }
+
+    // ── Win32 resource API ──────────────────────────────────────────────
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern IntPtr BeginUpdateResource(string pFileName, bool bDeleteExistingResources);
 
@@ -46,30 +70,44 @@ public class AddFileVersion : Task
     public override bool Execute()
     {
         bool success = true;
-        string ver = string.IsNullOrEmpty(Version) ? "1.0.0.0" : Version;
+        string fallbackVer = string.IsNullOrEmpty(Version) ? "1.0.0.0" : Version;
 
         foreach (var item in Files)
         {
             string path = item.GetMetadata("FullPath");
             if (!File.Exists(path))
             {
-                Log.LogWarning("AddFileVersion: file not found: " + path);
+                Log.LogWarning("PatchAssemblyVersion: file not found: " + path);
                 continue;
             }
 
             try
             {
-                // Clear read-only attribute so EndUpdateResource can replace the file.
+                // Resolve the version for this specific DLL from its Unity package.
+                string semver = ResolvePackageVersion(path) ?? fallbackVer;
+                string numericVer = SemverToNumeric(semver);
+                var parsedVersion = new System.Version(numericVer);
+
                 File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
 
-                byte[] data = BuildVersionResource(ver);
+                // ── Step 1: Mono.Cecil — set CLR metadata ───────────────
+                // AssemblyVersion uses the numeric 4-part version.
+                // AssemblyFileVersion stores the full semver string so
+                // pre-release info (e.g. "0.8.0-preview.5") is visible.
+                PatchClrMetadata(path, semver, parsedVersion);
+
+                // ── Step 2: Win32 API — embed PE version resource ───────
+                // PE version resource requires numeric parts only.
+                byte[] data = BuildVersionResource(numericVer);
                 ApplyVersionResource(path, data);
+
                 Log.LogMessage(MessageImportance.Normal,
-                    "AddFileVersion: set FileVersion " + ver + " on " + Path.GetFileName(path));
+                    "PatchAssemblyVersion: patched " + Path.GetFileName(path)
+                    + " → " + semver + " (PE " + numericVer + ")");
             }
             catch (Exception ex)
             {
-                Log.LogError("AddFileVersion: failed to patch " + path + ": " + ex.Message);
+                Log.LogError("PatchAssemblyVersion: failed to patch " + path + ": " + ex.Message);
                 success = false;
             }
         }
@@ -77,20 +115,131 @@ public class AddFileVersion : Task
         return success;
     }
 
+    // ── Resolve the version from the Unity PackageCache ─────────────────
+    // Maps "Unity.Burst.dll" → "com.unity.burst", finds the package
+    // directory, and reads "version" from its package.json.
+    private string ResolvePackageVersion(string dllPath)
+    {
+        if (string.IsNullOrEmpty(PackageCacheDir) || !Directory.Exists(PackageCacheDir))
+            return null;
+
+        // Unity.Burst.dll → "burst", Unity.Collections.dll → "collections", etc.
+        string fileName = Path.GetFileNameWithoutExtension(dllPath); // "Unity.Burst"
+        if (!fileName.StartsWith("Unity.", StringComparison.OrdinalIgnoreCase))
+            return null;
+        string suffix = fileName.Substring("Unity.".Length).ToLowerInvariant(); // "burst"
+        string prefix = "com.unity." + suffix + "@";
+
+        // Find the matching package directory (e.g. com.unity.burst@1.7.4)
+        foreach (var dir in Directory.GetDirectories(PackageCacheDir))
+        {
+            if (Path.GetFileName(dir).StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                string pkgJson = Path.Combine(dir, "package.json");
+                if (File.Exists(pkgJson))
+                {
+                    string json = File.ReadAllText(pkgJson);
+                    var m = Regex.Match(json, @"""version""\s*:\s*""([^""]+)""");
+                    if (m.Success)
+                        return m.Groups[1].Value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // ── Convert a semver string to a numeric 4-part version ─────────────
+    // "1.7.4" → "1.7.4.0", "0.8.0-preview.5" → "0.8.0.0"
+    private static string SemverToNumeric(string semver)
+    {
+        // Strip everything from the first non-numeric, non-dot character.
+        var m = Regex.Match(semver, @"^(\d+(?:\.\d+)*)");
+        string numeric = m.Success ? m.Groups[1].Value : "0.0.0.0";
+        // Pad to exactly 4 parts.
+        string[] parts = (numeric + ".0.0.0").Split('.');
+        return parts[0] + "." + parts[1] + "." + parts[2] + "." + parts[3];
+    }
+
+    // ── Mono.Cecil: set AssemblyVersion + add AssemblyFileVersion attr ──
+    private void PatchClrMetadata(string path, string versionStr, System.Version version)
+    {
+        string tmpDir = string.IsNullOrEmpty(IntermediateDir)
+            ? Path.GetDirectoryName(path)
+            : IntermediateDir;
+        Directory.CreateDirectory(tmpDir);
+        string tmpPath = Path.Combine(tmpDir, Path.GetFileName(path) + ".patching");
+        try
+        {
+            var resolver = new DefaultAssemblyResolver();
+            resolver.AddSearchDirectory(Path.GetDirectoryName(path));
+            if (!string.IsNullOrEmpty(LibPaths))
+            {
+                foreach (var dir in LibPaths.Split(';'))
+                {
+                    var d = dir.Trim();
+                    if (d.Length > 0 && Directory.Exists(d))
+                        resolver.AddSearchDirectory(d);
+                }
+            }
+            var readerParams = new ReaderParameters { AssemblyResolver = resolver };
+            using (var asm = AssemblyDefinition.ReadAssembly(path, readerParams))
+            {
+                // Set AssemblyVersion (the CLR identity version).
+                asm.Name.Version = version;
+
+                // Remove any existing AssemblyFileVersion attribute.
+                for (int i = asm.CustomAttributes.Count - 1; i >= 0; i--)
+                {
+                    if (asm.CustomAttributes[i].AttributeType.FullName ==
+                        "System.Reflection.AssemblyFileVersionAttribute")
+                        asm.CustomAttributes.RemoveAt(i);
+                }
+
+                // Add [assembly: AssemblyFileVersion("x.y.z.w")].
+                var strType = asm.MainModule.TypeSystem.String;
+                var attrType = new TypeReference(
+                    "System.Reflection", "AssemblyFileVersionAttribute",
+                    asm.MainModule, asm.MainModule.TypeSystem.CoreLibrary);
+                var ctorRef = new MethodReference(".ctor", asm.MainModule.TypeSystem.Void, attrType)
+                {
+                    HasThis = true
+                };
+                ctorRef.Parameters.Add(new ParameterDefinition(strType));
+
+                var attr = new CustomAttribute(ctorRef);
+                attr.ConstructorArguments.Add(
+                    new CustomAttributeArgument(strType, versionStr));
+                asm.CustomAttributes.Add(attr);
+
+                asm.Write(tmpPath);
+            }
+
+            File.Delete(path);
+            File.Move(tmpPath, path);
+        }
+        finally
+        {
+            if (File.Exists(tmpPath))
+                File.Delete(tmpPath);
+        }
+    }
+
+    // ── Win32: apply VS_VERSION_INFO resource ───────────────────────────
     private static void ApplyVersionResource(string filePath, byte[] data)
     {
-        // RT_VERSION = 16, resource name = 1, language = English US (0x0409)
-        // Delete existing resources first — some Unity DLLs ship with a malformed
-        // RT_VERSION that causes EndUpdateResource to fail if we try to merge.
-        IntPtr h = BeginUpdateResource(filePath, true);
+        // bDeleteExistingResources = false — only replace the version block,
+        // leave any other Win32 resources (manifests, etc.) intact.
+        IntPtr h = BeginUpdateResource(filePath, false);
         if (h == IntPtr.Zero)
             throw new InvalidOperationException(
                 "BeginUpdateResource failed: " + Marshal.GetLastWin32Error());
 
-        bool ok = UpdateResource(h, (IntPtr)16, (IntPtr)1, 0x0409, data, (uint)data.Length);
+        // RT_VERSION = 16, resource name = 1, language-neutral (0)
+        bool ok = UpdateResource(h, (IntPtr)16, (IntPtr)1, 0, data, (uint)data.Length);
         if (!ok)
         {
-            EndUpdateResource(h, true); // discard
+            EndUpdateResource(h, true);
             throw new InvalidOperationException(
                 "UpdateResource failed: " + Marshal.GetLastWin32Error());
         }
@@ -100,9 +249,7 @@ public class AddFileVersion : Task
                 "EndUpdateResource failed: " + Marshal.GetLastWin32Error());
     }
 
-    // Builds a VS_VERSION_INFO binary resource for the given version string.
-    // The structure follows the layout documented in the Windows SDK:
-    //   https://learn.microsoft.com/en-us/windows/win32/menurc/vs-versioninfo
+    // ── Build the VS_VERSION_INFO binary blob ───────────────────────────
     private static byte[] BuildVersionResource(string version)
     {
         string[] parts = (version + ".0.0.0").Split('.');
@@ -117,7 +264,6 @@ public class AddFileVersion : Task
         using (var ms = new MemoryStream())
         using (var w = new BinaryWriter(ms))
         {
-            // VS_VERSIONINFO (wValueLength = 52 = sizeof VS_FIXEDFILEINFO, wType = 0 binary)
             long viStart = BeginStruct(w, ms, 52, 0, "VS_VERSION_INFO");
 
             // VS_FIXEDFILEINFO
@@ -129,7 +275,7 @@ public class AddFileVersion : Task
             w.Write(fileVerLS);   // dwProductVersionLS
             w.Write(0x3Fu);       // dwFileFlagsMask
             w.Write(0u);          // dwFileFlags
-            w.Write(0x00040004u); // dwFileOS (VOS_NT_WINDOWS32)
+            w.Write(0x00040004u); // dwFileOS  (VOS_NT_WINDOWS32)
             w.Write(0x00000002u); // dwFileType (VFT_DLL)
             w.Write(0u);          // dwFileSubtype
             w.Write(0u);          // dwFileDateMS
@@ -138,8 +284,7 @@ public class AddFileVersion : Task
             // StringFileInfo
             long sfiStart = BeginStruct(w, ms, 0, 1, "StringFileInfo");
             {
-                // StringTable - language/codepage "040904B0" = English US / Unicode
-                long stStart = BeginStruct(w, ms, 0, 1, "040904B0");
+                long stStart = BeginStruct(w, ms, 0, 1, "000004B0");
                 {
                     WriteStringEntry(w, ms, "FileVersion",    version);
                     WriteStringEntry(w, ms, "ProductVersion", version);
@@ -151,35 +296,30 @@ public class AddFileVersion : Task
             // VarFileInfo
             long vfiStart = BeginStruct(w, ms, 0, 1, "VarFileInfo");
             {
-                // Translation: English US (0x0409), Unicode codepage (0x04B0)
                 long varStart = BeginStruct(w, ms, 4, 0, "Translation");
-                w.Write(0x04B00409u);
+                w.Write(0x04B00000u); // language-neutral, Unicode codepage
                 EndStruct(w, ms, varStart);
             }
             EndStruct(w, ms, vfiStart);
 
             EndStruct(w, ms, viStart);
-
             return ms.ToArray();
         }
     }
 
-    // Writes a sub-structure header (wLength placeholder, wValueLength, wType, szKey)
-    // and pads to a 4-byte boundary. Returns the position of the wLength field.
     private static long BeginStruct(BinaryWriter w, MemoryStream ms,
         ushort valueLen, ushort type, string key)
     {
         long pos = ms.Position;
-        w.Write((ushort)0); // wLength placeholder - back-patched by EndStruct
-        w.Write(valueLen);  // wValueLength
-        w.Write(type);      // wType
+        w.Write((ushort)0);
+        w.Write(valueLen);
+        w.Write(type);
         foreach (char c in key) w.Write((ushort)c);
-        w.Write((ushort)0); // null terminator
+        w.Write((ushort)0);
         Align4(w, ms);
         return pos;
     }
 
-    // Pads to 4-byte boundary then back-patches the wLength field written by BeginStruct.
     private static void EndStruct(BinaryWriter w, MemoryStream ms, long startPos)
     {
         Align4(w, ms);
@@ -189,14 +329,12 @@ public class AddFileVersion : Task
         ms.Position = endPos;
     }
 
-    // Writes a String entry: header + Unicode key + Unicode value (both null-terminated).
-    // wValueLength is the value length in WCHARs including the null terminator.
     private static void WriteStringEntry(BinaryWriter w, MemoryStream ms,
         string key, string value)
     {
         long startPos = BeginStruct(w, ms, (ushort)(value.Length + 1), 1, key);
         foreach (char c in value) w.Write((ushort)c);
-        w.Write((ushort)0); // null terminator
+        w.Write((ushort)0);
         EndStruct(w, ms, startPos);
     }
 
@@ -209,7 +347,6 @@ public class AddFileVersion : Task
       ]]></Code>
     </Task>
   </UsingTask>
-
 
   <!--
     ArchiveBurstPackage: MSBuild task that zips a com.unity.burst@* package directory
