@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +38,7 @@ namespace KSPBurst
         private static readonly List<string> ErrorMessages = new();
 
         [CanBeNull] private string _pluginBackup;
+        [CanBeNull] private Task<string> _pluginHashTask;
         [NotNull] public static string ExtractDir { get; private set; } = string.Empty;
         public static CompilerStatus Status { get; private set; } = CompilerStatus.NotStarted;
 
@@ -77,6 +79,7 @@ namespace KSPBurst
                 File.Move(library, backup);
                 Log($"Backed up burst generated plugin to {backup}");
                 _pluginBackup = backup;
+                _pluginHashTask = Task.Run(() => ComputeFileHash(backup));
             }
             catch (FileNotFoundException)
             {
@@ -250,17 +253,49 @@ namespace KSPBurst
             string burstExecutable = Path.Combine(packageDir, BclRelativePath);
             var argStr = $"{burstExecutable}\n  {string.Join("\n  ", args)}";
             var cliFile = $"{logDir}/command_line.log";
-            string lastRunArgs = null;
-            if (File.Exists(cliFile))
-                lastRunArgs = File.ReadAllText(cliFile);
+            var hashFile = $"{logDir}/plugin_hash.txt";
 
-            if (!changes.AnyChanges() && !string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup) &&
-                lastRunArgs == argStr)
+            bool NeedsRebuild()
+            {
+                if (changes.AnyChanges())
+                {
+                    Log("Mod DLLs have changed. Rebuilding...");
+                    return true;
+                }
+                if (string.IsNullOrEmpty(_pluginBackup))
+                    return true;
+                if (!File.Exists(_pluginBackup))
+                    return true;
+
+                string lastArgs = File.Exists(cliFile)
+                    ? File.ReadAllText(cliFile)
+                    : null;
+                if (lastArgs != argStr)
+                {
+                    Log("Burst compiler args have changed since last run. Rebuilding...");
+                    return true;
+                }
+                
+                string lastHash = File.Exists(hashFile)
+                    ? File.ReadAllText(hashFile)
+                    : null;
+                string currentHash = _pluginHashTask?.Result;
+
+                if (string.IsNullOrEmpty(lastHash) || string.IsNullOrEmpty(currentHash))
+                    return true;
+                if (lastHash != currentHash)
+                {
+                    Log("Burst library changed on disk unexpectedly! Rebuilding...");
+                    return true;
+                }
+
+                Log("Nothing has changed since last run, skipping burst generation");
+                return false;
+            }
+
+            if (!NeedsRebuild())
             {
                 // nothing changed and backup exists, skip expensive burst invocation
-                Log(lastRunArgs == argStr
-                    ? "Burst compiler arguments haven't changed since last time, skipping burst generation"
-                    : "No plugin changes detected, skipping burst generation");
                 return result;
             }
 
@@ -270,13 +305,24 @@ namespace KSPBurst
             // clean up log files from any previous compilation before starting a new one
             File.Delete($"{logDir}/KSPBurst-stdout.log");
             File.Delete($"{logDir}/KSPBurst-stderr.log");
+            File.Delete(hashFile);
 
             LogFormat("Burst called with arguments in {0}:\n{1}", cwd, argStr);
             result = RunBurstCompiler(burstExecutable, args, cwd, logDir);
 
-            if (string.IsNullOrEmpty(result.ErrorMessage) && result.ExitCode == 0)
-                // changes found and burst completed successfully, cache plugin versions
-                AssemblyUtil.CachePluginVersions(changes, packageDir);
+            if (!string.IsNullOrEmpty(result.ErrorMessage) || result.ExitCode != 0)
+                return result;
+
+            // changes found and burst completed successfully, cache plugin versions
+            AssemblyUtil.CachePluginVersions(changes, packageDir);
+
+            // save hash of the newly generated library so the next run can detect external overwrites
+            if (File.Exists(PathUtil.OutputLibraryPath))
+            {
+                var hash = ComputeFileHash(PathUtil.OutputLibraryPath);
+                if (hash is not null)
+                    File.WriteAllText(hashFile, hash);
+            }
 
             return result;
         }
@@ -512,6 +558,23 @@ namespace KSPBurst
             }
 
             Debug.LogErrorFormat($"[{PathUtil.ModName}]: " + format, args);
+        }
+
+        [CanBeNull]
+        private static string ComputeFileHash([NotNull] string path)
+        {
+            try
+            {
+                using var sha = SHA256.Create();
+                using var stream = File.OpenRead(path);
+                byte[] hash = sha.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[{PathUtil.ModName}] Failed to hash plugin file '{path}': {e.Message}");
+                return null;
+            }
         }
 
         private struct BurstCompilerResult
