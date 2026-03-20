@@ -503,10 +503,18 @@ namespace KSPBurst
         {
             if (directory is null) throw new ArgumentNullException(nameof(directory));
 
-            // any burst pattern is fine
-            return PathUtil.Glob(directory, $"*burst*/{BclRelativePath}")
+            var paths = PathUtil.Glob(directory, $"*burst*/{BclRelativePath}")
                 .Select(Path.GetDirectoryName)
-                .SelectGreatestVersion();
+                .OrderByDescending(PathUtil.PackageVersion)
+                .ToArray();
+
+            var message = new StringBuilder($"Found {paths.Length} potential compiler install${(paths.Length == 1 ? "" : "s")}:");
+            foreach (var path in paths)
+                message.AppendFormat("\n    {0}", path);
+            Log(message.ToString());
+
+            // any burst pattern is fine
+            return paths.SelectGreatestVersion();
         }
 
         internal static void FlushMessages()
