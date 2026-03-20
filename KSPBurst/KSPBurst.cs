@@ -308,7 +308,7 @@ namespace KSPBurst
             File.Delete(hashFile);
 
             LogFormat("Burst called with arguments in {0}:\n{1}", cwd, argStr);
-            result = RunBurstCompiler(burstExecutable, args, cwd, logDir);
+            result = RunBurstCompiler(burstExecutable, args, cwd, logDir, cacheDir);
 
             if (!string.IsNullOrEmpty(result.ErrorMessage) || result.ExitCode != 0)
                 return result;
@@ -359,16 +359,18 @@ namespace KSPBurst
         }
 
         private static BurstCompilerResult RunBurstCompiler([NotNull] string burstExecutable,
-            [NotNull] IEnumerable<string> args, [CanBeNull] string workingDir, [NotNull] string logDir)
+            [NotNull] IEnumerable<string> args, [CanBeNull] string workingDir, [NotNull] string logDir,
+            [NotNull] string cacheDir)
         {
             if (burstExecutable is null) throw new ArgumentNullException(nameof(burstExecutable));
             if (args is null) throw new ArgumentNullException(nameof(args));
             if (logDir is null) throw new ArgumentNullException(nameof(logDir));
+            if (cacheDir is null) throw new ArgumentNullException(nameof(cacheDir));
 
             BurstCompilerResult result = new();
 
             // write args to a file to avoid exceeding Windows' 32768 character command line limit
-            string argFile = Path.Combine(logDir, "argfile.txt");
+            string argFile = Path.Combine(cacheDir, "argfile.txt");
             File.WriteAllText(argFile, string.Join("\n", args));
 
             // run burst
