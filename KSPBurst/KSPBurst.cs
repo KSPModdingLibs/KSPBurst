@@ -225,12 +225,14 @@ namespace KSPBurst
             BurstCompilerResult result = new();
 
             // extract compiler
-            string errorString = UnpackBurstCompiler(out string packageDir);
-            if (!string.IsNullOrEmpty(errorString) || string.IsNullOrEmpty(packageDir))
+            string errorString = UnpackBurstCompiler(out string burstExecutable);
+            if (!string.IsNullOrEmpty(errorString) || string.IsNullOrEmpty(burstExecutable))
             {
                 result.ErrorMessage = $"Burst package not found: {errorString}";
                 return result;
             }
+
+            string cacheDir = GetPackageRoot(burstExecutable);
 
             // load config and resolve which assemblies to compile
             ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}/{PathUtil.ModName}");
@@ -238,7 +240,7 @@ namespace KSPBurst
             burstPlugins = AssemblyUtil.ApplyAssemblyOverrides(burstPlugins, GameDatabase.Instance.GetConfigNodes("KSPBURST_ASSEMBLY"));
 
             // check if any plugins have changed since last time
-            AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(packageDir, burstPlugins);
+            AssemblyUtil.AssemblyVersionChange[] changes = CollectPluginChanges(cacheDir, burstPlugins);
 
             // load burst command line args
             string cwd = Directory.GetCurrentDirectory();
@@ -249,8 +251,6 @@ namespace KSPBurst
             if (!Directory.Exists(logDir))
                 Directory.CreateDirectory(logDir);
 
-            // Process doesn't want to start with relative paths...
-            string burstExecutable = Path.Combine(packageDir, BclRelativePath);
             var argStr = $"{burstExecutable}\n  {string.Join("\n  ", args)}";
             var cliFile = $"{logDir}/command_line.log";
             var hashFile = $"{logDir}/plugin_hash.txt";
@@ -314,7 +314,7 @@ namespace KSPBurst
                 return result;
 
             // changes found and burst completed successfully, cache plugin versions
-            AssemblyUtil.CachePluginVersions(changes, packageDir);
+            AssemblyUtil.CachePluginVersions(changes, cacheDir);
 
             // save hash of the newly generated library so the next run can detect external overwrites
             if (File.Exists(PathUtil.OutputLibraryPath))
@@ -429,9 +429,9 @@ namespace KSPBurst
         }
 
         [CanBeNull]
-        private static string UnpackBurstCompiler([CanBeNull] out string burstDir)
+        private static string UnpackBurstCompiler([CanBeNull] out string burstExecutable)
         {
-            burstDir = null;
+            burstExecutable = null;
             string modDir = PathUtil.ModDir;
 
             // use the latest burst package archive
@@ -441,18 +441,18 @@ namespace KSPBurst
             // if archive is not found, check for existing compiler
             if (string.IsNullOrEmpty(archive))
             {
-                burstDir = FindExistingBurstCompiler(ExtractDir);
-                if (string.IsNullOrEmpty(burstDir))
+                burstExecutable = FindExistingBurstCompiler(ExtractDir);
+                if (string.IsNullOrEmpty(burstExecutable))
                     return $"Could not find burst package archive in {modDir} or directory in {ExtractDir}";
 
-                Log($"Using existing burst package from {burstDir}");
+                Log($"Using existing burst package from {burstExecutable}");
                 return null;
             }
 
             string archiveName = Path.GetFileName(archive);
 
             // append assembly version to the extracted directory so that new versions may re-extract burst
-            burstDir =
+            string burstDir =
                 $"{ExtractDir}/{PathUtil.ModName}@{Assembly.GetExecutingAssembly().GetName().Version}-{Path.GetFileNameWithoutExtension(archiveName)}";
 
             if (Directory.Exists(burstDir))
@@ -460,18 +460,16 @@ namespace KSPBurst
                 if (ContainsBurstCompiler(burstDir))
                 {
                     Log($"Burst package destination '{burstDir}' already exists, not extracting");
+                    burstExecutable = Path.Combine(burstDir, BclRelativePath);
                     return null;
                 }
 
                 // try looking for existing version
-                string archivedDir = burstDir;
-                burstDir = FindExistingBurstCompiler(ExtractDir);
-                if (string.IsNullOrEmpty(burstDir))
-                    return
-                        $"Burst package destination '{archivedDir}' already exists but it doesn't contain burst compiler and one wasn't found in {ExtractDir}";
+                burstExecutable = FindExistingBurstCompiler(ExtractDir);
+                if (string.IsNullOrEmpty(burstExecutable))
+                    return $"Burst package destination '{burstDir}' already exists but it doesn't contain burst compiler and one wasn't found in {ExtractDir}";
 
-                Log(
-                    $"Burst package destination '{archivedDir}' already exists but it doesn't contain burst compiler, using one from {burstDir}");
+                Log($"Burst package destination '{burstDir}' already exists but it doesn't contain burst compiler, using one from {burstExecutable}");
                 return null;
             }
 
@@ -482,15 +480,31 @@ namespace KSPBurst
             Compression.ExtractArchive(archive, burstDir);
             Log($"{archive} extracted to {burstDir}");
 
-            if (ContainsBurstCompiler(burstDir)) return null;
+            if (ContainsBurstCompiler(burstDir))
+            {
+                burstExecutable = Path.Combine(burstDir, BclRelativePath);
+                return null;
+            }
 
             // archive doesn't contain burst compiler? Look for existing one
-            burstDir = FindExistingBurstCompiler(ExtractDir);
-            if (string.IsNullOrEmpty(burstDir))
+            burstExecutable = FindExistingBurstCompiler(ExtractDir);
+            if (string.IsNullOrEmpty(burstExecutable))
                 return $"{archive} doesn't contain burst compiler and one wasn't found in {ExtractDir}";
 
-            Log($"{archive} doesn't contain burst compiler, using one from {burstDir}");
+            Log($"{archive} doesn't contain burst compiler, using one from {burstExecutable}");
             return null;
+        }
+
+        /// <summary>
+        ///     Returns the burst package root directory from the full path to bcl.exe.
+        ///     e.g. .../KSPBurst@1.7.4.6-com.unity.burst@1.7.4/package/.Runtime/bcl.exe
+        ///       -> .../KSPBurst@1.7.4.6-com.unity.burst@1.7.4
+        /// </summary>
+        [CanBeNull]
+        private static string GetPackageRoot([CanBeNull] string bclPath)
+        {
+            // bcl.exe -> .Runtime -> package -> root
+            return Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(bclPath)));
         }
 
         private static bool ContainsBurstCompiler([CanBeNull] string directory)
@@ -504,11 +518,10 @@ namespace KSPBurst
             if (directory is null) throw new ArgumentNullException(nameof(directory));
 
             var paths = PathUtil.Glob(directory, $"*burst*/{BclRelativePath}")
-                .Select(Path.GetDirectoryName)
                 .OrderByDescending(PathUtil.PackageVersion)
                 .ToArray();
 
-            var message = new StringBuilder($"Found {paths.Length} potential compiler install${(paths.Length == 1 ? "" : "s")}:");
+            var message = new StringBuilder($"Found {paths.Length} potential compiler install{(paths.Length == 1 ? "" : "s")}:");
             foreach (var path in paths)
                 message.AppendFormat("\n    {0}", path);
             Log(message.ToString());
