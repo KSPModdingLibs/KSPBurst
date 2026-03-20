@@ -91,3 +91,20 @@ python tools/version.py
 
 This updates version information in source files and the README. Do not edit
 version numbers by hand.
+
+## Implementation Notes
+A couple notes for future people who might need to maintain KSPBurst:
+
+* Unity.Burst.Unsafe.dll has had some manual patching done to it to make it work
+  on linux. If you use the one from the unity build it will work fine on windows
+  but will cause KSP to hang on load on linux and MacOS.
+
+  The build does not change it and it is in your best interest not to change it
+  either unless you want to spend a number of days trying to debug what is wrong.
+
+* The DLLs in the windows build do not have appropriate version info. This also
+  breaks KSP so we manually patch in appropriate version data using the build
+  targets in `KSPBurst.MSBuildTasks.targets`.
+
+  This is done automatically by the build, but be aware of it in the future in
+  case you ever need to change it.
