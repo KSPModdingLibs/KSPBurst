@@ -14,6 +14,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Mono.Cecil" Version="0.11.6" PrivateAssets="all" ExcludeAssets="compile;runtime" GeneratePathProperty="true" />
     <PackageReference Include="KSPBuildTools" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0-preview.2.21154.6" />
@@ -48,25 +52,21 @@
     <ItemGroup>
       <_ExtrasToCopy Include="$(TargetDir)/**/*.pdb" />
     </ItemGroup>
-    <Copy SourceFiles="@(_ExtrasToCopy)"
-          DestinationFolder="$(KSPBT_ModRoot)/$(KSPBT_ModPluginFolder)/%(RecursiveDir)" />
+    <Copy SourceFiles="@(_ExtrasToCopy)" DestinationFolder="$(KSPBT_ModRoot)/$(KSPBT_ModPluginFolder)/%(RecursiveDir)" />
   </Target>
 
   <!--
     Copy Unity plugin DLLs from the Unity build output into GameData, if the build exists.
     This replaces the copy_unity_plugins step from tools/post_build.py.
   -->
-  <Target Name="CopyUnityPlugins" AfterTargets="KSPBT_CopyDLLsToPluginFolder"
-      Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Build')">
+  <Target Name="CopyUnityPlugins" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Build')">
     <ItemGroup>
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Burst.dll" />
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Mathematics.dll" />
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Collections.dll" />
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Jobs.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(_UnityDlls)"
-          DestinationFolder="$(KSPBT_ModRoot)\Plugins"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_UnityDlls)" DestinationFolder="$(KSPBT_ModRoot)\Plugins" SkipUnchangedFiles="true" />
 
     <!--
       Patch Unity DLLs to carry their real package version in:
@@ -76,32 +76,22 @@
       Versions are read from each package's package.json in the Unity PackageCache.
     -->
     <ItemGroup>
-      <_UnityDllsToPatch Include="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll;
-                                  $(KSPBT_ModRoot)\Plugins\Unity.Collections.dll;
-                                  $(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" />
+      <_UnityDllsToPatch Include="$(KSPBT_ModRoot)\Plugins\Unity.Burst.dll;$(KSPBT_ModRoot)\Plugins\Unity.Collections.dll;$(KSPBT_ModRoot)\Plugins\Unity.Jobs.dll" />
       <_UnityDllsExist Include="@(_UnityDllsToPatch)" Condition="Exists('%(Identity)')" />
     </ItemGroup>
 
-    <PatchAssemblyVersion Files="@(_UnityDllsExist)" Version="$(Version)"
-                          PackageCacheDir="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache"
-                          LibPaths="$(KSPBT_ModRoot)\Plugins;$(KSPBT_ManagedPath)"
-                          IntermediateDir="$(IntermediateOutputPath)"
-                          Condition="'@(_UnityDllsExist)' != ''" />
+    <PatchAssemblyVersion Files="@(_UnityDllsExist)" Version="$(Version)" PackageCacheDir="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache" LibPaths="$(KSPBT_ModRoot)\Plugins;$(KSPBT_ManagedPath)" IntermediateDir="$(IntermediateOutputPath)" Condition="'@(_UnityDllsExist)' != ''" />
   </Target>
 
   <!--
     Zip the com.unity.burst@* package from the Unity PackageCache into the mod root.
     Equivalent to the archive_burst step in the old tools/post_build.py.
   -->
-  <Target Name="ArchiveBurst" AfterTargets="KSPBT_CopyDLLsToPluginFolder"
-      Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache')">
+  <Target Name="ArchiveBurst" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache')">
     <ItemGroup>
       <_BurstPackageManifest Include="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache\com.unity.burst@*\package.json" />
     </ItemGroup>
-    <ArchiveBurstPackage
-        Condition="'@(_BurstPackageManifest)' != ''"
-        SourceDir="%(RootDir)%(Directory)"
-        OutputDir="$(KSPBT_ModRoot)" />
+    <ArchiveBurstPackage Condition="'@(_BurstPackageManifest)' != ''" SourceDir="%(RootDir)%(Directory)" OutputDir="$(KSPBT_ModRoot)" />
   </Target>
 
   <Target Name="PostClean" AfterTargets="Clean">
