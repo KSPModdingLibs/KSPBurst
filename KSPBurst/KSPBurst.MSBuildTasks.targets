@@ -91,10 +91,10 @@ public class PatchAssemblyVersion : Task
                 File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
 
                 // ── Step 1: Mono.Cecil — set CLR metadata ───────────────
-                // AssemblyVersion uses the numeric 4-part version.
-                // AssemblyFileVersion stores the full semver string so
-                // pre-release info (e.g. "0.8.0-preview.5") is visible.
-                PatchClrMetadata(path, semver, parsedVersion);
+                // Both AssemblyVersion and AssemblyFileVersion use the
+                // numeric 4-part version (pre-release suffixes like
+                // "-preview.5" are not valid in these attributes).
+                PatchClrMetadata(path, numericVer, parsedVersion);
 
                 // ── Step 2: Win32 API — embed PE version resource ───────
                 // PE version resource requires numeric parts only.
