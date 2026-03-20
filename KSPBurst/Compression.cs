@@ -40,7 +40,8 @@ namespace KSPBurst
 
             try
             {
-                using ZipArchive zip = ZipFile.OpenRead(archivePath);
+                var stream = new MemoryStream(File.ReadAllBytes(archivePath));
+                using var zip = new ZipArchive(stream, ZipArchiveMode.Read);
 
                 foreach (ZipArchiveEntry entry in zip.Entries)
                 {
