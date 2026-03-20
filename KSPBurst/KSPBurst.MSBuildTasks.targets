@@ -91,10 +91,10 @@ public class PatchAssemblyVersion : Task
                 File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
 
                 // ── Step 1: Mono.Cecil — set CLR metadata ───────────────
-                // Both AssemblyVersion and AssemblyFileVersion use the
-                // numeric 4-part version (pre-release suffixes like
-                // "-preview.5" are not valid in these attributes).
-                PatchClrMetadata(path, numericVer, parsedVersion);
+                // AssemblyVersion and AssemblyFileVersion use the numeric
+                // 4-part version; AssemblyInformationalVersion keeps the
+                // original semver string (including pre-release tags).
+                PatchClrMetadata(path, numericVer, semver, parsedVersion);
 
                 // ── Step 2: Win32 API — embed PE version resource ───────
                 // PE version resource requires numeric parts only.
@@ -162,7 +162,7 @@ public class PatchAssemblyVersion : Task
     }
 
     // ── Mono.Cecil: set AssemblyVersion + add AssemblyFileVersion attr ──
-    private void PatchClrMetadata(string path, string versionStr, System.Version version)
+    private void PatchClrMetadata(string path, string versionStr, string infoVersion, System.Version version)
     {
         string tmpDir = string.IsNullOrEmpty(IntermediateDir)
             ? Path.GetDirectoryName(path)
@@ -188,29 +188,26 @@ public class PatchAssemblyVersion : Task
                 // Set AssemblyVersion (the CLR identity version).
                 asm.Name.Version = version;
 
-                // Remove any existing AssemblyFileVersion attribute.
+                // Remove any existing version attributes.
                 for (int i = asm.CustomAttributes.Count - 1; i >= 0; i--)
                 {
-                    if (asm.CustomAttributes[i].AttributeType.FullName ==
-                        "System.Reflection.AssemblyFileVersionAttribute")
+                    string name = asm.CustomAttributes[i].AttributeType.FullName;
+                    if (name == "System.Reflection.AssemblyFileVersionAttribute" ||
+                        name == "System.Reflection.AssemblyInformationalVersionAttribute")
                         asm.CustomAttributes.RemoveAt(i);
                 }
 
-                // Add [assembly: AssemblyFileVersion("x.y.z.w")].
                 var strType = asm.MainModule.TypeSystem.String;
-                var attrType = new TypeReference(
-                    "System.Reflection", "AssemblyFileVersionAttribute",
-                    asm.MainModule, asm.MainModule.TypeSystem.CoreLibrary);
-                var ctorRef = new MethodReference(".ctor", asm.MainModule.TypeSystem.Void, attrType)
-                {
-                    HasThis = true
-                };
-                ctorRef.Parameters.Add(new ParameterDefinition(strType));
+                var coreLib = asm.MainModule.TypeSystem.CoreLibrary;
+                var voidType = asm.MainModule.TypeSystem.Void;
 
-                var attr = new CustomAttribute(ctorRef);
-                attr.ConstructorArguments.Add(
-                    new CustomAttributeArgument(strType, versionStr));
-                asm.CustomAttributes.Add(attr);
+                // Add [assembly: AssemblyFileVersion("x.y.z.w")].
+                AddStringAttribute(asm, strType, coreLib, voidType,
+                    "AssemblyFileVersionAttribute", versionStr);
+
+                // Add [assembly: AssemblyInformationalVersion("x.y.z-preview.n")].
+                AddStringAttribute(asm, strType, coreLib, voidType,
+                    "AssemblyInformationalVersionAttribute", infoVersion);
 
                 asm.Write(tmpPath);
             }
@@ -223,6 +220,19 @@ public class PatchAssemblyVersion : Task
             if (File.Exists(tmpPath))
                 File.Delete(tmpPath);
         }
+    }
+
+    private static void AddStringAttribute(AssemblyDefinition asm,
+        TypeReference strType, IMetadataScope coreLib, TypeReference voidType,
+        string attrName, string value)
+    {
+        var attrType = new TypeReference("System.Reflection", attrName,
+            asm.MainModule, coreLib);
+        var ctorRef = new MethodReference(".ctor", voidType, attrType) { HasThis = true };
+        ctorRef.Parameters.Add(new ParameterDefinition(strType));
+        var attr = new CustomAttribute(ctorRef);
+        attr.ConstructorArguments.Add(new CustomAttributeArgument(strType, value));
+        asm.CustomAttributes.Add(attr);
     }
 
     // ── Win32: apply VS_VERSION_INFO resource ───────────────────────────
