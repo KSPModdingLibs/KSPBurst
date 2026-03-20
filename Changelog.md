@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 1.7.4.7
+* KSPBurst now reads the entire compiler archive into memory to avoid occasional
+  "stream not seekable" errors. This is supposed to be handled by `ZipArchive`
+  but we're still seeing the errors so maybe this will fix it.
+* Fixed a couple of bugs in finding the path to `bcl.exe` if the zip archive
+  could not be decompressed for some reason.
+* Fixed an exception when determining what DLLs are relevant to the burst compiler.
+* Better logging in a couple of places.
+* Moved the argfile out of the logs directory and into the compiler cache dir.
+
 ## 1.7.4.6
 * Revert back to using the exact `Unity.Burst.Unsafe.dll` that was shipped with
   KSPBurst 1.5.5.2.
