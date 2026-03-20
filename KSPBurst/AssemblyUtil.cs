@@ -90,21 +90,24 @@ namespace KSPBurst
         {
             if (plugins is null) throw new ArgumentNullException(nameof(plugins));
 
-            Dictionary<string, AssemblyLoader.LoadedAssembly> loadedByName = LoadedPlugins()
-                .ToDictionary(a => a.assembly.GetName().Name, a => a, StringComparer.OrdinalIgnoreCase);
+            var queue = new Queue<AssemblyLoader.LoadedAssembly>(plugins);
+            var dependencies = new HashSet<AssemblyLoader.LoadedAssembly>();
+            var loadedByName = new Dictionary<string, AssemblyLoader.LoadedAssembly>();
+            foreach (var plugin in LoadedPlugins())
+                loadedByName[plugin.assembly.GetName().Name] = plugin;
 
-            HashSet<string> pluginNames = plugins
-                .Select(p => p.assembly.GetName().Name)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            HashSet<AssemblyLoader.LoadedAssembly> dependencies = new();
-
-            foreach (AssemblyLoader.LoadedAssembly plugin in plugins)
-            foreach (AssemblyName refName in plugin.assembly.GetReferencedAssemblies())
+            while (queue.TryDequeue(out var plugin))
             {
-                if (pluginNames.Contains(refName.Name)) continue;
-                if (loadedByName.TryGetValue(refName.Name, out AssemblyLoader.LoadedAssembly dep))
-                    dependencies.Add(dep);
+                foreach (var refasm in plugin.assembly.GetReferencedAssemblies())
+                {
+                    if (!loadedByName.TryGetValue(refasm.Name, out var dep))
+                        continue;
+
+                    if (!dependencies.Add(dep))
+                        continue;
+
+                    queue.Enqueue(dep);
+                }
             }
 
             return dependencies.ToArray();
