@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.7.4.5
+* Strip `-preview` markers from file versions.
+
 ## 1.7.4.4
 * Added all version info metadata to `Unity.*` dlls.
 
