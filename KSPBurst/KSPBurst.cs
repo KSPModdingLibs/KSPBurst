@@ -50,10 +50,7 @@ namespace KSPBurst
 
             PathUtil.Initialize();
             ExtractDir = Path.Combine(PathUtil.KspDir, "PluginData");
-        }
-
-        private void Start()
-        {
+            
             // hide the burst plugin from unity until burst compiler finishes
             string library = PathUtil.OutputLibraryPath;
 
@@ -98,12 +95,15 @@ namespace KSPBurst
                     LogError($"Failed to delete burst plugin! Loaded plugin may be invalid: {e2}");
                 }
             }
+        }
 
+        private void Start()
+        {
             // if there's no ModuleManager, generate burst immediately since config options cannot be patched
             if (!AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name.Contains("ModuleManager")))
                 ModuleManagerPostLoad();
 
-            LoadingScreen.Instance.loaders.Add(gameObject.AddComponent<BurstLoadingSystem>());
+            LoadingScreen.Instance.loaders.Insert(0, gameObject.AddComponent<BurstLoadingSystem>());
         }
 
         public void ModuleManagerPostLoad()
