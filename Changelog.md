@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.7.4.6
+* Revert back to using the exact `Unity.Burst.Unsafe.dll` that was shipped with
+  KSPBurst 1.5.5.2.
+
 ## 1.7.4.5
 * Strip `-preview` markers from file versions.
 
