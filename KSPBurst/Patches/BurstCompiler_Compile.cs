@@ -32,7 +32,7 @@ internal static class BurstCompiler_Compile
 
         try
         {
-            task.GetAwaiter().GetResult();
+            task.Wait();
         }
         catch { }
     }

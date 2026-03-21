@@ -34,7 +34,7 @@ internal static class JobsUtility_CreateJobReflectionData
 
         try
         {
-            task.GetAwaiter().GetResult();
+            task.Wait();
         }
         catch { }
     }
