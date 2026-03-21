@@ -25,6 +25,9 @@ internal static class BurstCompiler_Compile
             return;
         }
 
+        if (task.IsCompleted)
+            return;
+
         Debug.LogWarning($"[KSPBurst] BurstCompiler.Compile called before KSPBurst compilation completed. Blocking until the compiler task completes. Call stack:\n{Environment.StackTrace}");
 
         try
