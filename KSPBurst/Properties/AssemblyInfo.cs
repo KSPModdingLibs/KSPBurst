@@ -34,3 +34,16 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("1.7.4.9")]
 [assembly: AssemblyFileVersion("1.7.4.9")]
 [assembly: KSPAssembly("KSPBurst", 1, 7, 4)]
+
+// Other cases use a KSPAssemblyDependency on KSPBurst to load after these libraries
+// so we make sure that doing so implies a dependency on the other libraries.
+[assembly: KSPAssemblyDependency("Unity.Burst.Unsafe", 0, 0)]
+[assembly: KSPAssemblyDependency("Unity.Mathematics", 0, 0)]
+[assembly: KSPAssemblyDependency("Microsoft.Extensions.FileSystemGlobbing", 0, 0)]
+[assembly: KSPAssemblyDependency("System.IO.Compression", 0, 0)]
+[assembly: KSPAssemblyDependency("System.Runtime.CompilerServices.Unsafe", 0, 0)]
+[assembly: KSPAssemblyDependency("System.Runtime", 0, 0)]
+[assembly: KSPAssemblyDependency("Unity.Burst", 0, 0)]
+[assembly: KSPAssemblyDependency("System.IO.Compression.FileSystem", 0, 0)]
+[assembly: KSPAssemblyDependency("Unity.Collections", 0, 0)]
+[assembly: KSPAssemblyDependency("Unity.Jobs", 0, 0)]
