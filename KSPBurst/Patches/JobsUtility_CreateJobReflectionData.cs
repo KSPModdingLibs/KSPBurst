@@ -30,7 +30,7 @@ internal static class JobsUtility_CreateJobReflectionData
         if (task.IsCompleted)
             return;
 
-        Debug.LogWarning($"[KSPBurst] JobsUtility.CreateJobReflectionData called before KSPBurst compilation completed. Blocking until the compiler task completes. Call stack:\n{Environment.StackTrace}");
+        Debug.LogWarning($"[KSPBurst] JobsUtility.CreateJobReflectionData called before KSPBurst compilation completed. Blocking until the compiler task completes.");
 
         try
         {
