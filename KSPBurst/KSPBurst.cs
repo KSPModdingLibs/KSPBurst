@@ -43,7 +43,7 @@ namespace KSPBurst
         private static readonly Harmony Harmony = new("KSPBurst");
         [CanBeNull] private string _pluginBackup;
         [CanBeNull] private Task<string> _pluginHashTask;
-        [CanBeNull] private Task<(string error, string executable)> _unpackTask;
+        [CanBeNull] private Task<string> _unpackTask;
         [NotNull] public static string ExtractDir { get; private set; } = string.Empty;
         public static CompilerStatus Status { get; private set; } = CompilerStatus.NotStarted;
 
@@ -108,11 +108,7 @@ namespace KSPBurst
 
         private void Start()
         {
-            _unpackTask = Task.Run(() =>
-            {
-                string error = UnpackBurstCompiler(out string executable);
-                return (error, executable);
-            });
+            _unpackTask = Task.Run(UnpackBurstCompiler);
 
             // if there's no ModuleManager, generate burst immediately since config options cannot be patched
             if (!AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name.Contains("ModuleManager")))
@@ -257,10 +253,14 @@ namespace KSPBurst
             BurstCompilerResult result = new();
 
             // wait for compiler unpack that was started in Start()
-            var (errorString, burstExecutable) = _unpackTask.Result;
-            if (!string.IsNullOrEmpty(errorString) || string.IsNullOrEmpty(burstExecutable))
+            string burstExecutable;
+            try
             {
-                result.ErrorMessage = $"Burst package not found: {errorString}";
+                burstExecutable = _unpackTask.Result;
+            }
+            catch (AggregateException ex)
+            {
+                result.ErrorMessage = $"Burst package not found: {ex.InnerException?.Message ?? ex.Message}";
                 return result;
             }
 
@@ -462,10 +462,9 @@ namespace KSPBurst
             return result;
         }
 
-        [CanBeNull]
-        private static string UnpackBurstCompiler([CanBeNull] out string burstExecutable)
+        [NotNull]
+        private static string UnpackBurstCompiler()
         {
-            burstExecutable = null;
             string modDir = PathUtil.ModDir;
 
             // use the latest burst package archive
@@ -475,12 +474,12 @@ namespace KSPBurst
             // if archive is not found, check for existing compiler
             if (string.IsNullOrEmpty(archive))
             {
-                burstExecutable = FindExistingBurstCompiler(ExtractDir);
-                if (string.IsNullOrEmpty(burstExecutable))
-                    return $"Could not find burst package archive in {modDir} or directory in {ExtractDir}";
+                string existing = FindExistingBurstCompiler(ExtractDir);
+                if (string.IsNullOrEmpty(existing))
+                    throw new FileNotFoundException($"Could not find burst package archive in {modDir} or directory in {ExtractDir}");
 
-                Log($"Using existing burst package from {burstExecutable}");
-                return null;
+                Log($"Using existing burst package from {existing}");
+                return existing;
             }
 
             string archiveName = Path.GetFileName(archive);
@@ -494,17 +493,16 @@ namespace KSPBurst
                 if (ContainsBurstCompiler(burstDir))
                 {
                     Log($"Burst package destination '{burstDir}' already exists, not extracting");
-                    burstExecutable = Path.Combine(burstDir, BclRelativePath);
-                    return null;
+                    return Path.Combine(burstDir, BclRelativePath);
                 }
 
                 // try looking for existing version
-                burstExecutable = FindExistingBurstCompiler(ExtractDir);
-                if (string.IsNullOrEmpty(burstExecutable))
-                    return $"Burst package destination '{burstDir}' already exists but it doesn't contain burst compiler and one wasn't found in {ExtractDir}";
+                string existing = FindExistingBurstCompiler(ExtractDir);
+                if (string.IsNullOrEmpty(existing))
+                    throw new FileNotFoundException($"Burst package destination '{burstDir}' already exists but it doesn't contain burst compiler and one wasn't found in {ExtractDir}");
 
-                Log($"Burst package destination '{burstDir}' already exists but it doesn't contain burst compiler, using one from {burstExecutable}");
-                return null;
+                Log($"Burst package destination '{burstDir}' already exists but it doesn't contain burst compiler, using one from {existing}");
+                return existing;
             }
 
             // have to extract the archive, clean up old extracted files first
@@ -515,18 +513,15 @@ namespace KSPBurst
             Log($"{archive} extracted to {burstDir}");
 
             if (ContainsBurstCompiler(burstDir))
-            {
-                burstExecutable = Path.Combine(burstDir, BclRelativePath);
-                return null;
-            }
+                return Path.Combine(burstDir, BclRelativePath);
 
             // archive doesn't contain burst compiler? Look for existing one
-            burstExecutable = FindExistingBurstCompiler(ExtractDir);
-            if (string.IsNullOrEmpty(burstExecutable))
-                return $"{archive} doesn't contain burst compiler and one wasn't found in {ExtractDir}";
+            string fallback = FindExistingBurstCompiler(ExtractDir);
+            if (string.IsNullOrEmpty(fallback))
+                throw new FileNotFoundException($"{archive} doesn't contain burst compiler and one wasn't found in {ExtractDir}");
 
-            Log($"{archive} doesn't contain burst compiler, using one from {burstExecutable}");
-            return null;
+            Log($"{archive} doesn't contain burst compiler, using one from {fallback}");
+            return fallback;
         }
 
         /// <summary>
