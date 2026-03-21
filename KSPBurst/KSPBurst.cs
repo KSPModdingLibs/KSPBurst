@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -36,8 +37,8 @@ namespace KSPBurst
         private static KSPBurst _instance;
 
         private static Thread _mainThread;
-        private static readonly List<string> LogMessages = [];
-        private static readonly List<string> ErrorMessages = [];
+        private static readonly ConcurrentQueue<string> LogMessages = [];
+        private static readonly ConcurrentQueue<string> ErrorMessages = [];
 
         private static readonly Harmony Harmony = new("KSPBurst");
         [CanBeNull] private string _pluginBackup;
@@ -166,7 +167,6 @@ namespace KSPBurst
                 yield return null;
             }
 
-            // Note this must not be in the loop above because the container is not threadsafe
             FlushMessages();
 
             // set the status before anything else can throw errors
@@ -570,6 +570,15 @@ namespace KSPBurst
 
         internal static void Log([CanBeNull] string message)
         {
+            if (message is null)
+                throw new ArgumentNullException(nameof(message));
+
+            if (!InMainThread)
+            {
+                LogMessages.Enqueue(message);
+                return;
+            }
+
             Debug.LogFormat($"[{PathUtil.ModName}]: " + "{0}", message);
         }
 
@@ -579,7 +588,7 @@ namespace KSPBurst
             if (format is null) throw new ArgumentNullException(nameof(format));
             if (!InMainThread)
             {
-                LogMessages.Add(string.Format(format, args));
+                LogMessages.Enqueue(string.Format(format, args));
                 return;
             }
 
@@ -590,7 +599,7 @@ namespace KSPBurst
         {
             if (!InMainThread)
             {
-                ErrorMessages.Add(message);
+                ErrorMessages.Enqueue(message);
                 return;
             }
 
@@ -603,7 +612,7 @@ namespace KSPBurst
             if (format is null) throw new ArgumentNullException(nameof(format));
             if (!InMainThread)
             {
-                ErrorMessages.Add(string.Format(format, args));
+                ErrorMessages.Enqueue(string.Format(format, args));
                 return;
             }
 
