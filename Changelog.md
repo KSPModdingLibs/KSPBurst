@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 1.7.4.8
+* KSPBurst now patches several methods so that another mod attempting to compile
+  a burst function pointer or launch a job either blocks until burst compilation
+  is complete or prints an error message indicating that it broke KSPBurst.
+* Burst compilation now gets kicked off slightly earlier in the loading process.
+* KSPBurst now depends on KSPHarmony
+
 ## 1.7.4.7
 * KSPBurst now reads the entire compiler archive into memory to avoid occasional
   "stream not seekable" errors. This is supposed to be handled by `ZipArchive`
