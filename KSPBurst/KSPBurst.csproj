@@ -18,12 +18,21 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+
     <PackageReference Include="Mono.Cecil" Version="0.11.6" PrivateAssets="all" ExcludeAssets="compile;runtime" GeneratePathProperty="true" />
     <PackageReference Include="KSPBuildTools" Version="1.1.0" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0-preview.2.21154.6" />
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="HarmonyKSP">
+      <HintPath>$(ReferencePath)/GameData/000_Harmony/0Harmony.dll</HintPath>
+      <Private>false</Private>
+      <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
+      <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
+      <GenerateDependencyAttribute>true</GenerateDependencyAttribute>
+    </Reference>
+
     <!-- Shipped with the mod - reference from GameData -->
     <Reference Include="System.IO.Compression">
       <HintPath>$(GameDataOutDir)\Plugins\System.IO.Compression.dll</HintPath>
@@ -37,14 +46,11 @@
       <HintPath>$(GameDataOutDir)\Plugins\Unity.Burst.dll</HintPath>
       <Private>False</Private>
     </Reference>
+  </ItemGroup>
 
-    <!-- KSP assemblies - resolved via ReferencePath in KSPBurst.props.user -->
-    <Reference Include="Assembly-CSharp">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <Private>False</Private>
-    </Reference>
+  <ItemGroup>
+    <Publicize Include="Unity.Burst:Unity.Burst.BurstCompiler.Compile" />
+    <Publicize Include="Unity.Burst:Unity.Burst.BurstCompilerOptions.HasBurstCompileAttribute" />
   </ItemGroup>
 
   <!-- Copy .pdb alongside the DLL in the Plugins folder -->

@@ -5,7 +5,7 @@
         <Version>1.7.4.2</Version>
 
         <TargetFramework>net481</TargetFramework>
-        <LangVersion>11</LangVersion>
+        <LangVersion>14</LangVersion>
 
         <DebugType>portable</DebugType>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

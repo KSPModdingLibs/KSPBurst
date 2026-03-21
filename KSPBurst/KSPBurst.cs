@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -9,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using HarmonyLib;
 using JetBrains.Annotations;
 using UniLinq;
 using Unity.Burst;
@@ -34,15 +34,17 @@ namespace KSPBurst
         public const string BurstPackagePattern = "*burst*@*";
 
         private static Thread _mainThread;
-        private static readonly List<string> LogMessages = new();
-        private static readonly List<string> ErrorMessages = new();
+        private static readonly List<string> LogMessages = [];
+        private static readonly List<string> ErrorMessages = [];
 
+        private static readonly Harmony Harmony = new("KSPBurst");
         [CanBeNull] private string _pluginBackup;
         [CanBeNull] private Task<string> _pluginHashTask;
         [NotNull] public static string ExtractDir { get; private set; } = string.Empty;
         public static CompilerStatus Status { get; private set; } = CompilerStatus.NotStarted;
 
         internal static bool InMainThread => Thread.CurrentThread == _mainThread;
+        internal static Task CompilerTask { get; private set; } = null;
 
         private void Awake()
         {
@@ -95,6 +97,8 @@ namespace KSPBurst
                     LogError($"Failed to delete burst plugin! Loaded plugin may be invalid: {e2}");
                 }
             }
+
+            Harmony.PatchAll();
         }
 
         private void Start()
@@ -138,6 +142,7 @@ namespace KSPBurst
 
             // run burst in a separate thread to avoid slowing down KSP loading times even more
             Task<BurstCompilerResult> task = Task.Factory.StartNew(Generate);
+            CompilerTask = task;
 
             // wait for burst to complete
             while (!task.IsCompleted)
@@ -206,6 +211,10 @@ namespace KSPBurst
                     Log($"Deleted burst generated plugin backup {_pluginBackup}");
                 }
             }
+
+            // Undo all the logging patches to unity methods.
+            Harmony.UnpatchAll("KSPBurst");
+            CompilerTask = Task.CompletedTask;
 
             // Force static constructors to run, because otherwise they could be invoked on an async thread.
             // This needs to happen after burst compilation completes but before anything else
