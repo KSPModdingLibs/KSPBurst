@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.7.4.9
+* Silenced warning messages in case where burst compilation has already finished.
+* Unpack the compiler immediately, instead of waiting until MM patching is
+  completed.
+
 ## 1.7.4.8
 * KSPBurst now patches several methods so that another mod attempting to compile
   a burst function pointer or launch a job either blocks until burst compilation
