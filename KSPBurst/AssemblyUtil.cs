@@ -238,25 +238,46 @@ namespace KSPBurst
             return versions.ToArray();
         }
 
+        struct VersionEntry(AssemblyVersionChange v) : IComparable<VersionEntry>
+        {
+            public string Name = Path.GetFileName(v.Url) ?? v.Url;
+            public Version Version = v.Version;
+            public Guid? Cached = v.Cached;
+            public Guid? Loaded = v.Loaded;
+
+            public readonly int CompareTo(VersionEntry other) => Name.CompareTo(other.Name);
+        }
+
         [NotNull]
         public static string Format([NotNull] IEnumerable<AssemblyVersionChange> versions)
         {
             if (versions is null) throw new ArgumentNullException(nameof(versions));
-            const string format = "  {0} {1,-100}{2,-16}{3,-36} {4,-36}";
+
+            var entries = versions
+                .Select(v => new VersionEntry(v))
+                .OrderBy(v => v)
+                .ToArray();
+
+            var nameWidth = entries
+                .Select(e => e.Name)
+                .Append("Assembly")
+                .Max(name => name.Length);
+            string format = $"  {{0}} {{1,-{nameWidth}}} {{2,-16}}{{3,-36}} {{4,-36}}\n";
 
             StringBuilder sb = StringBuilderCache.Acquire();
-            sb.AppendFormat(format, " ", "Assembly Url", "Version", "Cached Guid", "Guid").AppendLine();
+            sb.AppendFormat(format, " ", "Assembly", "Version", "Cached Guid", "Guid");
 
-            static string ToString(Guid? guid)
+            foreach (var entry in entries)
             {
-                return guid is null ? string.Empty : guid.ToString();
+                sb.AppendFormat(
+                    format,
+                    entry.Loaded == entry.Cached ? " " : "x",
+                    entry.Name,
+                    entry.Version?.ToString() ?? string.Empty,
+                    entry.Cached?.ToString() ?? string.Empty,
+                    entry.Loaded?.ToString() ?? string.Empty
+                );
             }
-
-            foreach (AssemblyVersionChange version in versions)
-                sb.AppendFormat(format,
-                    version.Loaded == version.Cached ? " " : "x",
-                    version.Url, version.Version?.ToString() ?? string.Empty,
-                    ToString(version.Cached), ToString(version.Loaded)).AppendLine();
 
             var str = sb.ToString();
             sb.Release();
