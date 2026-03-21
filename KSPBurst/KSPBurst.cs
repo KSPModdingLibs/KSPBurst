@@ -114,7 +114,7 @@ namespace KSPBurst
             LoadingScreen.Instance.loaders.Insert(0, gameObject.AddComponent<BurstLoadingSystem>());
         }
 
-        private void Oestroy()
+        private void OnDestroy()
         {
             _instance = null;
         }
