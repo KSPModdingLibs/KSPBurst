@@ -43,6 +43,7 @@ namespace KSPBurst
         private static readonly Harmony Harmony = new("KSPBurst");
         [CanBeNull] private string _pluginBackup;
         [CanBeNull] private Task<string> _pluginHashTask;
+        [CanBeNull] private Task<(string error, string executable)> _unpackTask;
         [NotNull] public static string ExtractDir { get; private set; } = string.Empty;
         public static CompilerStatus Status { get; private set; } = CompilerStatus.NotStarted;
 
@@ -107,6 +108,12 @@ namespace KSPBurst
 
         private void Start()
         {
+            _unpackTask = Task.Run(() =>
+            {
+                string error = UnpackBurstCompiler(out string executable);
+                return (error, executable);
+            });
+
             // if there's no ModuleManager, generate burst immediately since config options cannot be patched
             if (!AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name.Contains("ModuleManager")))
                 PostLoad();
@@ -249,8 +256,8 @@ namespace KSPBurst
         {
             BurstCompilerResult result = new();
 
-            // extract compiler
-            string errorString = UnpackBurstCompiler(out string burstExecutable);
+            // wait for compiler unpack that was started in Start()
+            var (errorString, burstExecutable) = _unpackTask.Result;
             if (!string.IsNullOrEmpty(errorString) || string.IsNullOrEmpty(burstExecutable))
             {
                 result.ErrorMessage = $"Burst package not found: {errorString}";
