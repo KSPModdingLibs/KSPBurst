@@ -33,6 +33,8 @@ namespace KSPBurst
         public const string BclRelativePath = "package/.Runtime/bcl.exe";
         public const string BurstPackagePattern = "*burst*@*";
 
+        private static KSPBurst _instance;
+
         private static Thread _mainThread;
         private static readonly List<string> LogMessages = [];
         private static readonly List<string> ErrorMessages = [];
@@ -49,6 +51,7 @@ namespace KSPBurst
         private void Awake()
         {
             _mainThread = Thread.CurrentThread;
+            _instance = this;
 
             PathUtil.Initialize();
             ExtractDir = Path.Combine(PathUtil.KspDir, "PluginData");
@@ -105,12 +108,25 @@ namespace KSPBurst
         {
             // if there's no ModuleManager, generate burst immediately since config options cannot be patched
             if (!AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name.Contains("ModuleManager")))
-                ModuleManagerPostLoad();
+                PostLoad();
 
             LoadingScreen.Instance.loaders.Insert(0, gameObject.AddComponent<BurstLoadingSystem>());
         }
 
-        public void ModuleManagerPostLoad()
+        private void Oestroy()
+        {
+            _instance = null;
+        }
+
+        // Static callbacks run earlier than ones on game objects. Since we want
+        // get the task started as early as possible (in case anyone tries to
+        // compile a function pointer or run a job) we use the static variant.
+        public static void ModuleManagerPostLoad()
+        {
+            _instance.PostLoad();
+        }
+
+        public void PostLoad()
         {
             // only run once since assemblies cannot be reloaded mid-game
             if (Status != CompilerStatus.NotStarted) return;
