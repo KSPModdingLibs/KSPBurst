@@ -285,7 +285,7 @@ namespace KSPBurst
 
             var argStr = $"{burstExecutable}\n  {string.Join("\n  ", args)}";
             var cliFile = $"{logDir}/command_line.log";
-            var hashFile = $"{logDir}/plugin_hash.txt";
+            var hashFile = $"{cacheDir}/plugin_hash.txt";
 
             bool NeedsRebuild()
             {
