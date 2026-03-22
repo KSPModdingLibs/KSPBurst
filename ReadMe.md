@@ -59,6 +59,8 @@ KSPBURST_ASSEMBLY
 }
 ```
 
+For more details on actually writing burst-compiled code see [the wiki](https://github.com/KSPModdingLibs/KSPBurst/wiki).
+
 ## Configuration Options
 
 All configuration options present in `KSPBurst.cfg` map directly to `bcl.exe` command line options. If `ModuleManager`
