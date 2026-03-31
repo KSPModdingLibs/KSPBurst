@@ -114,7 +114,7 @@ namespace KSPBurst
             if (!AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name.Contains("ModuleManager")))
                 PostLoad();
 
-            LoadingScreen.Instance.loaders.Insert(0, gameObject.AddComponent<BurstLoadingSystem>());
+            LoadingScreen.Instance.loaders.Add(gameObject.AddComponent<BurstLoadingSystem>());
         }
 
         private void OnDestroy()
