@@ -41,8 +41,8 @@ namespace KSPBurst
             // only compile assemblies that declare a dependency on KSPBurst (with config overrides applied)
             AddRootAssemblies(args, AssemblyUtil.BurstPluginAssemblyPaths(burstPlugins, rootDir));
             // but provide all plugin directories so references can be resolved
-            AddAssemblyFolders(args, AssemblyUtil.KspAndPluginAssemblyPaths(false, rootDir));
-            string kspPluginDir = Path.Combine(PathUtil.DataDir, "Managed");
+            AddAssemblyFolders(args, AssemblyUtil.PluginAssemblyPaths(rootDir));
+            string kspPluginDir = AssemblyUtil.GetKspPluginDir();
             args.Add($"--assembly-folder={PathUtil.GetRelativePath(kspPluginDir, rootDir)}");
 
             return args;
