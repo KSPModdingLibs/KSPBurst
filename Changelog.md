@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 1.7.4.10
+* Fix an issue where KSPBurst was putting its loading system at the very start,
+  instead of the end.
+
 ## 1.7.4.9
 * Silenced warning messages in case where burst compilation has already finished.
 * Unpack the compiler immediately, instead of waiting until MM patching is
