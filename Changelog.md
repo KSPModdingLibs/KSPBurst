@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.7.4.11
+* Use the correct path to the managed directories so KSPBurst works correctly
+  on MacOS. This now uses the directory that Assembly-CSharp.dll is in.
+* Fix some issues around cleaning up old burst compiler directories. This should
+  work correctly in all cases now.
+* Clean up generated temp folders. We now make bcl.exe put its temp files in a
+  custom directory and delete it when we are done.
+
 ## 1.7.4.10
 * Fix an issue where KSPBurst was putting its loading system at the very start,
   instead of the end.
