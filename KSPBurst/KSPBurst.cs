@@ -412,6 +412,12 @@ namespace KSPBurst
             if (cacheDir is null) throw new ArgumentNullException(nameof(cacheDir));
 
             BurstCompilerResult result = new();
+            
+            // create a temp folder under the cache directory for burst to use
+            string tempdir = Path.Combine(cacheDir, "temp");
+            if (!Directory.Exists(tempdir))
+                Directory.CreateDirectory(tempdir);
+            args = System.Linq.Enumerable.Append(args, $"--temp-folder={tempdir}");
 
             // write args to a file to avoid exceeding Windows' 32768 character command line limit
             string argFile = Path.Combine(cacheDir, "argfile.txt");
@@ -470,6 +476,18 @@ namespace KSPBurst
             result.ErrorMessage = string.IsNullOrEmpty(PathUtil.FindOutputLibrary())
                 ? "Burst did not generate a library"
                 : null;
+
+            try
+            {
+                Directory.Delete(tempdir, recursive: true);
+            }
+            catch (DirectoryNotFoundException) { }
+            catch (Exception ex)
+            {
+                LogError($"Failed to clean up temporary directory {tempdir}");
+                LogException(ex);
+            }
+            
 
             return result;
         }

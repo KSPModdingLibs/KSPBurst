@@ -229,7 +229,6 @@ namespace KSPBurst
             new FlagOption("debugMode"),
             new FlagOption("generate-static-linkage-methods"),
             new FlagOption("generate-job-marshalling-methods"),
-            new StringOption("temp-folder"),
             new FlagOption("enable-direct-external-linking"),
             new FlagOption("use-platform-sdk-linkers"),
             new FlagOption("keep-intermediate-files"),
