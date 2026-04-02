@@ -80,17 +80,23 @@ namespace KSPBurst
             if (string.IsNullOrWhiteSpace(infoFilename))
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(infoFilename));
 
-            List<string> cleaned = new();
+            List<string> cleaned = [];
             foreach (string infoFile in PathUtil.Glob(directory, $"**/{infoFilename}"))
             {
                 string dirname = Path.GetDirectoryName(infoFile);
                 if (dirname is null) continue;
 
                 cleaned.Add(dirname);
-                string[] fileList = ReadFileList(infoFile);
-                File.Delete(infoFile);
-                AssemblyUtil.DeleteCache(dirname);
-                RemoveFiles(dirname, fileList);
+
+                try
+                {
+                    Directory.Delete(dirname, recursive: true);
+                }
+                catch (Exception e)
+                {
+                    KSPBurst.LogError($"[KSPBurst] Failed to delete {dirname}");
+                    KSPBurst.LogException(e);
+                }
             }
 
             return cleaned;

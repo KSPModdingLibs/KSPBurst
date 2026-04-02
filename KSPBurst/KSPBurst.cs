@@ -31,15 +31,27 @@ namespace KSPBurst
             Error
         }
 
+        private enum LogLevel
+        {
+            Info,
+            Error,
+            Exception
+        }
+
+        private struct LogMessage
+        {
+            public LogLevel level;
+            public string message;
+            public Exception exception;
+        }
+
         public const string BclRelativePath = "package/.Runtime/bcl.exe";
         public const string BurstPackagePattern = "*burst*@*";
 
         private static KSPBurst _instance;
 
         private static Thread _mainThread;
-        private static readonly ConcurrentQueue<string> LogMessages = [];
-        private static readonly ConcurrentQueue<string> ErrorMessages = [];
-
+        private static readonly ConcurrentQueue<LogMessage> LogMessages = [];
         private static readonly Harmony Harmony = new("KSPBurst");
         [CanBeNull] private string _pluginBackup;
         [CanBeNull] private Task<string> _pluginHashTask;
@@ -561,13 +573,21 @@ namespace KSPBurst
 
         internal static void FlushMessages()
         {
-            foreach (string message in LogMessages)
-                Log(message);
-            foreach (string message in ErrorMessages)
-                LogError(message);
-
-            LogMessages.Clear();
-            ErrorMessages.Clear();
+            while (LogMessages.TryDequeue(out var log))
+            {
+                switch (log.level)
+                {
+                    case LogLevel.Info:
+                        Log(log.message);
+                        break;
+                    case LogLevel.Error:
+                        LogError(log.message);
+                        break;
+                    case LogLevel.Exception:
+                        LogException(log.exception);
+                        break;
+                }
+            }
         }
 
         internal static void Log([CanBeNull] string message)
@@ -577,7 +597,11 @@ namespace KSPBurst
 
             if (!InMainThread)
             {
-                LogMessages.Enqueue(message);
+                LogMessages.Enqueue(new()
+                {
+                    level = LogLevel.Info,
+                    message = message
+                });
                 return;
             }
 
@@ -590,7 +614,12 @@ namespace KSPBurst
             if (format is null) throw new ArgumentNullException(nameof(format));
             if (!InMainThread)
             {
-                LogMessages.Enqueue(string.Format(format, args));
+                
+                LogMessages.Enqueue(new()
+                {
+                    level = LogLevel.Info,
+                    message = string.Format(format, args)
+                });
                 return;
             }
 
@@ -601,7 +630,11 @@ namespace KSPBurst
         {
             if (!InMainThread)
             {
-                ErrorMessages.Enqueue(message);
+                LogMessages.Enqueue(new()
+                {
+                    level = LogLevel.Error,
+                    message = message
+                });
                 return;
             }
 
@@ -614,11 +647,32 @@ namespace KSPBurst
             if (format is null) throw new ArgumentNullException(nameof(format));
             if (!InMainThread)
             {
-                ErrorMessages.Enqueue(string.Format(format, args));
+                LogMessages.Enqueue(new()
+                {
+                    level = LogLevel.Error,
+                    message = string.Format(format, args)
+                });
                 return;
             }
 
             Debug.LogErrorFormat($"[{PathUtil.ModName}]: " + format, args);
+        }
+
+        internal static void LogException(Exception ex)
+        {
+            if (ex is null) throw new ArgumentNullException(nameof(ex));
+
+            if (!InMainThread)
+            {
+                LogMessages.Enqueue(new()
+                {
+                    level = LogLevel.Exception,
+                    exception = ex
+                });
+                return;
+            }
+
+            Debug.LogException(ex);
         }
 
         [CanBeNull]
