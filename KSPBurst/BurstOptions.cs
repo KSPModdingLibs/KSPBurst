@@ -33,6 +33,8 @@ namespace KSPBurst
             args.AddRange(Options.Select(option => option.MakeOption(node.GetValue(option.Name)))
                 .Where(option => !string.IsNullOrEmpty(option)));
 
+            args.AddRange(SelectTargets(node.GetValuesList("target")).Select(target => $"--target={target}"));
+
             // multiple options
             foreach (IOption option in MultiOptions)
                 args.AddRange(node.GetValuesList(option.Name).Select(value => option.MakeOption(value))
@@ -57,6 +59,62 @@ namespace KSPBurst
             args.Add($"--assembly-folder={PathUtil.GetRelativePath(kspPluginDir, rootDir)}");
 
             return args;
+        }
+
+        // Picks the targets to compile for, out of the targets in the config. The game only ever uses the best target
+        // that the CPU supports, so we compile only that one. This makes compilation faster. When we can't tell what
+        // the CPU supports, we compile all of the targets in the config, like before.
+        [NotNull]
+        public static List<Target> SelectTargets([NotNull] IEnumerable<string> values)
+        {
+            if (values is null) throw new ArgumentNullException(nameof(values));
+
+            List<Target> targets = new();
+            foreach (string value in values)
+            {
+                try
+                {
+                    targets.Add((Target) Enum.Parse(typeof(Target), value, true));
+                }
+                catch (Exception e)
+                {
+                    UnityEngine.Debug.LogException(e);
+                }
+            }
+
+            // Auto lets the compiler choose, so we leave that alone.
+            if (targets.Count <= 1 || targets.Contains(Target.Auto))
+                return targets;
+
+            CpuLevel? cpuLevel = CpuFeatures.Detect();
+            if (cpuLevel is null)
+            {
+                KSPBurst.Log("Could not detect the CPU features, so we compile for all of the configured targets");
+                return targets;
+            }
+
+            List<Target> supported = targets.Where(target => TargetLevel(target) <= cpuLevel).ToList();
+            if (supported.Count == 0)
+            {
+                KSPBurst.LogError($"The CPU only supports {cpuLevel}, and none of the configured targets " +
+                                  $"({string.Join(", ", targets)}) run on it. We compile for all of them anyway.");
+                return targets;
+            }
+
+            Target best = supported.OrderByDescending(TargetLevel).First();
+            KSPBurst.Log($"The CPU supports {cpuLevel}, so we only compile for {best}");
+            return [best];
+        }
+
+        private static CpuLevel TargetLevel(Target target)
+        {
+            return target switch
+            {
+                Target.X86_SSE4 or Target.X64_SSE4 => CpuLevel.Sse4,
+                Target.AVX => CpuLevel.Avx,
+                Target.AVX2 => CpuLevel.Avx2,
+                _ => CpuLevel.Sse2
+            };
         }
 
         public static void AddRootAssemblies(
@@ -270,7 +328,7 @@ namespace KSPBurst
         [NotNull]
         public static IReadOnlyList<IOption> MultiOptions { get; } = new List<IOption>
         {
-            new EnumOption<Target>("target"),
+            // new EnumOption<Target>("target"), // special case, see SelectTargets
             new EnumOption<Dump>("dump"),
             new StringOption("disable-warnings"),
             new StringOption("compilation-defines"),
