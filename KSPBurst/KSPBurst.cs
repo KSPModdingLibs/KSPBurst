@@ -423,8 +423,22 @@ namespace KSPBurst
             string argFile = Path.Combine(cacheDir, "argfile.txt");
             File.WriteAllText(argFile, string.Join("\n", args));
 
+            UnixUtil.MarkCompilerExecutable(burstExecutable);
+
+            string launcher = burstExecutable;
+            var launcherArgs = $"\"@{argFile}\"";
+
+            // bcl.exe is a PE file so on linux it can't be run directly. The kernel picks an interpreter for it using
+            // binfmt_misc, which fails if no handler is registered and runs it with wine if wine has registered one.
+            if (PathUtil.SelectByPlatform(false, true, false))
+            {
+                launcher = UnixUtil.FindMono() ?? "mono";
+                launcherArgs = $"\"{burstExecutable}\" {launcherArgs}";
+                Log($"Running burst compiler with {launcher}");
+            }
+
             // run burst
-            var info = new ProcessStartInfo(burstExecutable, $"\"@{argFile}\"")
+            var info = new ProcessStartInfo(launcher, launcherArgs)
             {
                 CreateNoWindow = true, // don't need terminal popping up
                 RedirectStandardOutput = true,

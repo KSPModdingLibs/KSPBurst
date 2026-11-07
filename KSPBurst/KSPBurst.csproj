@@ -33,6 +33,11 @@
       <GenerateDependencyAttribute>true</GenerateDependencyAttribute>
     </Reference>
 
+    <!-- Shipped with KSP - resolved from the Managed directory -->
+    <Reference Include="Mono.Posix">
+      <Private>False</Private>
+    </Reference>
+
     <!-- Shipped with the mod - reference from GameData -->
     <Reference Include="System.IO.Compression">
       <HintPath>$(GameDataOutDir)\Plugins\System.IO.Compression.dll</HintPath>

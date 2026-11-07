@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+* Use `mono` explicitly to run burst on Linux.
+* Mark `bcl.exe` as executable on Linux.
 
 ## 1.7.4.11
 * Use the correct path to the managed directories so KSPBurst works correctly
