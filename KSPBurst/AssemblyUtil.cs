@@ -96,8 +96,10 @@ namespace KSPBurst
             foreach (var plugin in LoadedPlugins())
                 loadedByName[plugin.assembly.GetName().Name] = plugin;
 
-            while (queue.TryDequeue(out var plugin))
+            while (queue.Count > 0)
             {
+                var plugin = queue.Dequeue();
+
                 foreach (var refasm in plugin.assembly.GetReferencedAssemblies())
                 {
                     if (!loadedByName.TryGetValue(refasm.Name, out var dep))

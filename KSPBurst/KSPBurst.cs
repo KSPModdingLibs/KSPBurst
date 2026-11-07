@@ -49,6 +49,9 @@ namespace KSPBurst
         public const string BurstPackagePattern = "*burst*@*";
 
         private static KSPBurst _instance;
+#if KSP_RETOOLED
+        private static bool _libraryLoaded;
+#endif
 
         private static Thread _mainThread;
         private static readonly ConcurrentQueue<LogMessage> LogMessages = [];
@@ -70,8 +73,17 @@ namespace KSPBurst
             PathUtil.Initialize();
             ExtractDir = Path.Combine(PathUtil.KspDir, "PluginData");
             
-            // hide the burst plugin from unity until burst compiler finishes
             string library = PathUtil.OutputLibraryPath;
+
+#if KSP_RETOOLED
+            // Unity doesn't load this library by itself, so we don't need to hide it while the compiler runs.
+            if (File.Exists(library))
+            {
+                _pluginBackup = library;
+                _pluginHashTask = Task.Run(() => ComputeFileHash(library));
+            }
+#else
+            // hide the burst plugin from unity until burst compiler finishes
 
             // Generate a new backup name with every invocation so that permission issues
             // on old backups do not break everything.
@@ -114,6 +126,7 @@ namespace KSPBurst
                     LogError($"Failed to delete burst plugin! Loaded plugin may be invalid: {e2}");
                 }
             }
+#endif
 
             Harmony.PatchAll();
         }
@@ -228,6 +241,9 @@ namespace KSPBurst
                 }
             }
 
+#if KSP_RETOOLED
+            LoadLibrary();
+#else
             if (!string.IsNullOrEmpty(_pluginBackup) && File.Exists(_pluginBackup))
             {
                 if (!File.Exists(PathUtil.OutputLibraryPath))
@@ -242,6 +258,7 @@ namespace KSPBurst
                     Log($"Deleted burst generated plugin backup {_pluginBackup}");
                 }
             }
+#endif
 
             // Undo all the logging patches to unity methods.
             Harmony.UnpatchAll("KSPBurst");
@@ -260,6 +277,32 @@ namespace KSPBurst
             Destroy(this);
         }
 
+#if KSP_RETOOLED
+        // Loads the library that the burst compiler generated. Unity 2019.4 finds this library by itself, but Unity 6
+        // only loads the library that was built with the player, so we have to load ours.
+        //
+        // This has to run on the main thread. If a mod creates a job before this runs, then that job type runs on mono
+        // until the game restarts. Function pointers don't have this problem: if a mod compiles one after this runs, then
+        // it gets the burst version even if it compiled the same one earlier.
+        internal static void LoadLibrary()
+        {
+            if (_libraryLoaded) return;
+            _libraryLoaded = true;
+
+            string library = PathUtil.FindOutputLibrary();
+            if (library is null)
+            {
+                LogError("There is no burst generated library to load");
+                return;
+            }
+
+            if (BurstRuntime.LoadAdditionalLibrary(library))
+                Log($"Loaded burst generated library {library}");
+            else
+                LogError($"Failed to load burst generated library {library}");
+        }
+
+#endif
         private BurstCompilerResult Generate()
         {
             BurstCompilerResult result = new();
@@ -277,6 +320,9 @@ namespace KSPBurst
             }
 
             string cacheDir = GetPackageRoot(burstExecutable);
+#if KSP_RETOOLED
+            Retooled.RetooledAssemblies.Initialize(cacheDir);
+#endif
 
             // load config and resolve which assemblies to compile
             ConfigNode node = GameDatabase.Instance.GetConfigNode($"{PathUtil.ModFolderName}/{PathUtil.ModName}/{PathUtil.ModName}");
@@ -352,7 +398,13 @@ namespace KSPBurst
             File.Delete(hashFile);
 
             LogFormat("Burst called with arguments in {0}:\n{1}", cwd, argStr);
+#if KSP_RETOOLED
+            Retooled.RetooledAssemblies.Prepare(burstPlugins);
             result = RunBurstCompiler(burstExecutable, args, cwd, logDir, cacheDir);
+            Retooled.RetooledAssemblies.Cleanup();
+#else
+            result = RunBurstCompiler(burstExecutable, args, cwd, logDir, cacheDir);
+#endif
 
             if (!string.IsNullOrEmpty(result.ErrorMessage) || result.ExitCode != 0)
                 return result;

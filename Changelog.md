@@ -3,6 +3,10 @@
 ## Unreleased
 * Use `mono` explicitly to run burst on Linux.
 * Mark `bcl.exe` as executable on Linux.
+* Support KSP Retooled 1.13. The release now has `KSPBurst.dll` for stock KSP and
+  `KSPBurst.Retooled.1.13.dll` for Retooled, the game picks the one it needs.
+  On Retooled the generated library is in `PluginData/KSPBurst` and only has the
+  burst code of mods.
 
 ## 1.7.4.11
 * Use the correct path to the managed directories so KSPBurst works correctly

@@ -1,41 +1,29 @@
-using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 using Unity.Jobs.LowLevel.Unsafe;
-using UnityEngine;
 
 namespace KSPBurst.Patches;
 
-[HarmonyPatch(typeof(JobsUtility))]
+[HarmonyPatch]
 internal static class JobsUtility_CreateJobReflectionData
 {
-    static IEnumerable<MethodInfo> TargetMethods()
+    // Each version of Unity has different overloads of this method, so we patch all of them.
+    static IEnumerable<MethodBase> TargetMethods()
     {
-        yield return SymbolExtensions.GetMethodInfo(() => 
-            JobsUtility.CreateJobReflectionData(default(Type), default(Type), default(JobType), null));
-        yield return SymbolExtensions.GetMethodInfo(() =>
-            JobsUtility.CreateJobReflectionData(default(Type), default(JobType), null, null, null));
+        return typeof(JobsUtility)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(method => method.Name == nameof(JobsUtility.CreateJobReflectionData));
     }
 
-    static void Prefix()
+    static void Prefix(object[] __args)
     {
-        var task = KSPBurst.CompilerTask;
-        if (task is null)
-        {
-            Debug.LogError($"[KSPBurst] JobsUtility.CreateJobReflectionData called before KSPBurst compilation was started. This will break KSPBurst. Call stack:\n{Environment.StackTrace}");
+#if KSP_RETOOLED
+        if (!__args.OfType<System.Type>().Any(Retooled.RetooledAssemblies.IsModType))
             return;
-        }
+#endif
 
-        if (task.IsCompleted)
-            return;
-
-        Debug.LogWarning($"[KSPBurst] JobsUtility.CreateJobReflectionData called before KSPBurst compilation completed. Blocking until the compiler task completes.");
-
-        try
-        {
-            task.Wait();
-        }
-        catch { }
+        CompilerGuard.WaitForCompiler("JobsUtility.CreateJobReflectionData");
     }
 }
