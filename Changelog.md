@@ -1,8 +1,8 @@
 # Changelog
 
 ## Unreleased
-* Detect CPU features and limit only run the burst compiler with the relevant
-  CPU features instead of all of them.
+* Detect CPU features and limit run the burst compiler with the relevant CPU
+  features instead of all of them.
 * Use `mono` explicitly to run burst on Linux.
 * Mark `bcl.exe` as executable on Linux.
 * Support KSP Retooled 1.13.
