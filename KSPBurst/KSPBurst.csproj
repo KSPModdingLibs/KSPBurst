@@ -8,37 +8,19 @@
     <!-- Don't auto-generate AssemblyInfo - we maintain Properties/AssemblyInfo.cs manually -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 
-    <!-- KSPBuildTools settings -->
+    <!-- KSP1Retooled.BuildTools settings -->
     <KSPBT_ModRoot>$(GameDataOutDir)</KSPBT_ModRoot>
     <KSPBT_ModPluginFolder>Plugins</KSPBT_ModPluginFolder>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-
     <PackageReference Include="Mono.Cecil" Version="0.11.6" PrivateAssets="all" ExcludeAssets="compile;runtime" GeneratePathProperty="true" />
-    <PackageReference Include="KSPBuildTools" Version="1.1.0" />
+    <PackageReference Include="KSP1Retooled.BuildTools" Version="2.0.1" />
     <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="6.0.0-preview.2.21154.6" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="HarmonyKSP">
-      <HintPath>$(ReferencePath)/GameData/000_Harmony/0Harmony.dll</HintPath>
-      <Private>false</Private>
-      <KSPAssemblyName>HarmonyKSP</KSPAssemblyName>
-      <KSPAssemblyVersion>0.0.0</KSPAssemblyVersion>
-      <GenerateDependencyAttribute>true</GenerateDependencyAttribute>
-    </Reference>
-
-    <!-- Shipped with KSP - resolved from the Managed directory -->
-    <Reference Include="Mono.Posix">
-      <Private>False</Private>
-    </Reference>
-
-    <!-- Shipped with the mod - reference from GameData -->
+    <!-- We ship these with the mod. Retooled has its own copies, so it skips the ones that we ship. -->
     <Reference Include="System.IO.Compression">
       <HintPath>$(GameDataOutDir)\Plugins\System.IO.Compression.dll</HintPath>
       <Private>False</Private>
@@ -47,19 +29,44 @@
       <HintPath>$(GameDataOutDir)\Plugins\System.IO.Compression.FileSystem.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Unity.Burst">
-      <HintPath>$(GameDataOutDir)\Plugins\Unity.Burst.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <Publicize Include="Unity.Burst:Unity.Burst.BurstCompiler.Compile" />
-    <Publicize Include="Unity.Burst:Unity.Burst.BurstCompilerOptions.HasBurstCompileAttribute" />
-  </ItemGroup>
+  <!--
+    The build tools set KSPBT_TargetGame and KSPBT_GameRoot in their targets, and MSBuild evaluates those targets after
+    the body of this file. The body can't use these properties, so we add the references that differ between the games
+    in this target instead.
+  -->
+  <Target Name="AddGameReferences" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Include="HarmonyKSP">
+        <HintPath>$(KSPBT_GameRoot)/GameData/000_Harmony/0Harmony.dll</HintPath>
+        <Private>false</Private>
+      </Reference>
+    </ItemGroup>
 
-  <!-- Copy .pdb alongside the DLL in the Plugins folder -->
-  <Target Name="CopyExtrasToPluginFolder" AfterTargets="KSPBT_CopyDLLsToPluginFolder">
+    <!-- Stock KSP doesn't include Burst. Retooled does, and the build tools already reference it. -->
+    <ItemGroup Condition=" '$(KSPBT_TargetGame)' == 'Stock' ">
+      <Reference Include="Unity.Burst">
+        <HintPath>$(GameDataOutDir)\Plugins\Unity.Burst.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
+    </ItemGroup>
+
+    <!-- Retooled includes Mono.Cecil, and RetooledAssemblies.cs uses it. -->
+    <ItemGroup Condition=" '$(KSPBT_TargetGame)' == 'Retooled' ">
+      <Reference Include="Mono.Cecil">
+        <HintPath>$(KSPBT_ManagedPath)/Mono.Cecil.dll</HintPath>
+        <Aliases>Cecil</Aliases> <!-- 0Harmony contains its own copy of these types, so we need an alias to tell them apart. -->
+        <Private>False</Private>
+      </Reference>
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Copy .pdb alongside the DLL in the Plugins folder. This target and the two targets below only write files that both
+    games use. When we build for both games, only the stock build runs them.
+  -->
+  <Target Name="CopyExtrasToPluginFolder" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition=" '$(_KSPBT_IsRetooledVariant)' != 'true' ">
     <ItemGroup>
       <_ExtrasToCopy Include="$(TargetDir)/**/*.pdb" />
     </ItemGroup>
@@ -70,7 +77,7 @@
     Copy Unity plugin DLLs from the Unity build output into GameData, if the build exists.
     This replaces the copy_unity_plugins step from tools/post_build.py.
   -->
-  <Target Name="CopyUnityPlugins" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Build')">
+  <Target Name="CopyUnityPlugins" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Build') And '$(_KSPBT_IsRetooledVariant)' != 'true'">
     <ItemGroup>
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Burst.dll" />
       <_UnityDlls Include="$(ProjectRootDir)Unity\KSPBurst\Build\**\*_Data\Managed\Unity.Mathematics.dll" />
@@ -98,7 +105,7 @@
     Zip the com.unity.burst@* package from the Unity PackageCache into the mod root.
     Equivalent to the archive_burst step in the old tools/post_build.py.
   -->
-  <Target Name="ArchiveBurst" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache')">
+  <Target Name="ArchiveBurst" AfterTargets="KSPBT_CopyDLLsToPluginFolder" Condition="Exists('$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache') And '$(_KSPBT_IsRetooledVariant)' != 'true'">
     <ItemGroup>
       <_BurstPackageManifest Include="$(ProjectRootDir)Unity\KSPBurst\Library\PackageCache\com.unity.burst@*\package.json" />
     </ItemGroup>

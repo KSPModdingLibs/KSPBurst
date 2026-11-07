@@ -38,10 +38,21 @@ namespace KSPBurst
                 args.AddRange(node.GetValuesList(option.Name).Select(value => option.MakeOption(value))
                     .Where(o => !string.IsNullOrEmpty(o)));
 
+#if KSP_RETOOLED
+            // The library that ships with the game already has all of the burst code that isn't from a mod. Following
+            // references would also reach Unity.Entities, which this version of the compiler can't compile.
+            args.RemoveAll(arg => arg.StartsWith("--include-root-assembly-references"));
+            args.Add("--include-root-assembly-references=false");
+
+            // The compiler can't read the mods' own files correctly, so it gets copies. RetooledAssemblies explains why.
+            AddRootAssemblies(args, Retooled.RetooledAssemblies.RootPaths(burstPlugins, rootDir));
+            args.Add($"--assembly-folder={PathUtil.GetRelativePath(Retooled.RetooledAssemblies.Folder, Path.GetFullPath(rootDir))}");
+#else
             // only compile assemblies that declare a dependency on KSPBurst (with config overrides applied)
             AddRootAssemblies(args, AssemblyUtil.BurstPluginAssemblyPaths(burstPlugins, rootDir));
             // but provide all plugin directories so references can be resolved
             AddAssemblyFolders(args, AssemblyUtil.PluginAssemblyPaths(rootDir));
+#endif
             string kspPluginDir = AssemblyUtil.GetKspPluginDir();
             args.Add($"--assembly-folder={PathUtil.GetRelativePath(kspPluginDir, rootDir)}");
 

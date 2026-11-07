@@ -35,6 +35,12 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("1.7.4.11")]
 [assembly: KSPAssembly("KSPBurst", 1, 7, 4)]
 
+#if KSP_RETOOLED
+// This dependency has two effects. Stock KSP refuses to load this build, and Retooled picks this build over
+// KSPBurst.dll. The build tools normally generate this attribute, but we maintain this file by hand.
+[assembly: KSPAssemblyDependency("KSP", 1, 13)]
+#endif
+
 // Other cases use a KSPAssemblyDependency on KSPBurst to load after these libraries
 // so we make sure that doing so implies a dependency on the other libraries.
 [assembly: KSPAssemblyDependency("Unity.Burst.Unsafe", 0, 0)]

@@ -1,7 +1,7 @@
 using System;
+using System.Reflection;
 using HarmonyLib;
 using Unity.Burst;
-using UnityEngine;
 
 namespace KSPBurst.Patches;
 
@@ -9,31 +9,25 @@ namespace KSPBurst.Patches;
 // static constructor of BurstCompilerHelper to run. Instead, we patch this
 // outer one. All the calls go through it anyway so this tends not to be an
 // issue.
-[HarmonyPatch(
-    typeof(BurstCompiler),
-    nameof(BurstCompiler.Compile),
-    [typeof(object), typeof(bool)]
-)]
+[HarmonyPatch]
 internal static class BurstCompiler_Compile
 {
-    static void Prefix()
+    static MethodBase TargetMethod()
     {
-        var task = KSPBurst.CompilerTask;
-        if (task is null)
-        {
-            Debug.LogError($"[KSPBurst] BurstCompiler.Compile called before KSPBurst compilation was started. This will break KSPBurst. Call stack:\n{Environment.StackTrace}");
+#if KSP_RETOOLED
+        return AccessTools.Method(typeof(BurstCompiler), "Compile", [typeof(object)]);
+#else
+        return AccessTools.Method(typeof(BurstCompiler), "Compile", [typeof(object), typeof(bool)]);
+#endif
+    }
+
+    static void Prefix(object[] __args)
+    {
+#if KSP_RETOOLED
+        if (!(__args[0] is Delegate target && Retooled.RetooledAssemblies.IsModType(target.Method.DeclaringType)))
             return;
-        }
+#endif
 
-        if (task.IsCompleted)
-            return;
-
-        Debug.LogWarning($"[KSPBurst] BurstCompiler.Compile called before KSPBurst compilation completed. Blocking until the compiler task completes.");
-
-        try
-        {
-            task.Wait();
-        }
-        catch { }
+        CompilerGuard.WaitForCompiler("BurstCompiler.Compile");
     }
 }

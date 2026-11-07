@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using JetBrains.Annotations;
-using Mono.Unix.Native;
 
 namespace KSPBurst
 {
@@ -13,8 +13,15 @@ namespace KSPBurst
     {
         private const string MonoExecutable = "mono";
 
+        // rwxr-xr-x
+        private const uint ExecutableMode = 0x1ED;
+
         // Common install locations, used when the game was started with a PATH that doesn't include mono.
         private static readonly string[] FallbackMonoDirs = {"/usr/bin", "/usr/local/bin"};
+
+        // We call chmod directly because Unity 6's Managed folder doesn't include Mono.Posix.
+        [DllImport("libc", SetLastError = true)]
+        private static extern int chmod(string path, uint mode);
 
         /// <summary>
         ///     Finds the system mono executable.
@@ -62,13 +69,10 @@ namespace KSPBurst
             if (Directory.Exists(hostDir))
                 files.AddRange(Directory.GetFiles(hostDir));
 
-            const FilePermissions mode = FilePermissions.S_IRWXU | FilePermissions.S_IRGRP | FilePermissions.S_IXGRP |
-                                         FilePermissions.S_IROTH | FilePermissions.S_IXOTH;
-
             foreach (string file in files)
             {
-                if (Syscall.chmod(file, mode) != 0)
-                    KSPBurst.LogError($"Failed to make {file} executable: {Stdlib.GetLastError()}");
+                if (chmod(file, ExecutableMode) != 0)
+                    KSPBurst.LogError($"Failed to make {file} executable: errno {Marshal.GetLastWin32Error()}");
             }
         }
     }

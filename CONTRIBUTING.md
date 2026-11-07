@@ -31,6 +31,16 @@ Create a `KSPBurst.props.user` file in the repository root:
 
 Replace `path\to\KSP` with the path to your KSP installation.
 
+To build for KSP Retooled as well, set the path to both installs in the same file:
+
+```xml
+<KSPBT_StockGameRoot>path\to\KSP</KSPBT_StockGameRoot>
+<KSPBT_RetooledGameRoot>path\to\Retooled</KSPBT_RetooledGameRoot>
+```
+
+Each build then produces both `KSPBurst.dll` and `KSPBurst.Retooled.1.13.dll`. Code
+that is specific to Retooled goes behind `#if KSP_RETOOLED`.
+
 ### Unity Packages (optional)
 
 If you need to rebuild the Unity packages (e.g. updating Burst, Mathematics, Collections,
@@ -101,6 +111,16 @@ A couple notes for future people who might need to maintain KSPBurst:
 
   The build does not change it and it is in your best interest not to change it
   either unless you want to spend a number of days trying to debug what is wrong.
+
+* On Retooled, Unity's own `lib_burst_generated` already has the burst code of the
+  game, and the bundled compiler can't compile `Unity.Entities`. So there we only
+  compile mods, to `PluginData/KSPBurst`, and load the result with
+  `BurstRuntime.LoadAdditionalLibrary`. On stock this library has to stay in
+  `KSP_x64_Data/Plugins`, as that is the only place Unity 2019.4 loads it from.
+
+  The compiler also doesn't follow type forwarders, and Unity 6 moved many types.
+  `RetooledAssemblies.cs` deals with that by compiling temporary copies of the mods
+  in the `mod-temp` folder of the extracted compiler. Its documentation has the details.
 
 * The DLLs in the windows build do not have appropriate version info. This also
   breaks KSP so we manually patch in appropriate version data using the build

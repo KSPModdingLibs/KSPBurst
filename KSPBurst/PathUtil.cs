@@ -135,7 +135,15 @@ namespace KSPBurst
             ModDir = Path.GetFullPath($"{Assembly.GetExecutingAssembly().Location}/../..");
             ModFolderName = Path.GetFileName(ModDir);
             ModLogsDir = Path.Combine(KspDir, "Logs", ModName);
+#if KSP_RETOOLED
+            // The only library that Unity loads by itself is the one that ships with the game. We can't add to that
+            // library, so we keep ours here and KSPBurst.LoadLibrary loads it.
+            OutputLibrary = Path.Combine(KspDir, "PluginData", ModName, LibraryName);
+            Directory.CreateDirectory(Path.GetDirectoryName(OutputLibrary));
+#else
+            // This is the only folder that Unity 2019.4 loads burst methods from.
             OutputLibrary = Path.Combine(DataDir, "Plugins", LibraryName);
+#endif
             NativeLibraryExtension = SelectByPlatform(".dll", ".so", ".bundle");
             OutputLibraryPath = OutputLibrary + NativeLibraryExtension;
         }
