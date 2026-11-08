@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+
+## 1.7.4.13
+* Fix a bug that would cause KSPBurst to not load on MacOS.
+
+## 1.7.4.12
 * Detect CPU features and limit run the burst compiler with the relevant CPU
   features instead of all of them.
 * Use `mono` explicitly to run burst on Linux.
