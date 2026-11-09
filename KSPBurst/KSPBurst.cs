@@ -480,9 +480,10 @@ namespace KSPBurst
             string launcher = burstExecutable;
             var launcherArgs = $"\"@{argFile}\"";
 
-            // bcl.exe is a PE file so on linux it can't be run directly. The kernel picks an interpreter for it using
-            // binfmt_misc, which fails if no handler is registered and runs it with wine if wine has registered one.
-            if (PathUtil.SelectByPlatform(false, true, false))
+            // bcl.exe is a PE file so outside of windows it can't be run directly. On linux the kernel picks an
+            // interpreter for it using binfmt_misc, which fails if no handler is registered and runs it with wine if
+            // wine has registered one. macOS has no such mechanism and refuses to exec it at all.
+            if (PathUtil.SelectByPlatform(false, true, true))
             {
                 launcher = UnixUtil.FindMono() ?? "mono";
                 launcherArgs = $"\"{burstExecutable}\" {launcherArgs}";

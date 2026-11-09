@@ -16,8 +16,16 @@ namespace KSPBurst
         // rwxr-xr-x
         private const uint ExecutableMode = 0x1ED;
 
-        // Common install locations, used when the game was started with a PATH that doesn't include mono.
-        private static readonly string[] FallbackMonoDirs = {"/usr/bin", "/usr/local/bin"};
+        // Common install locations, used when the game was started with a PATH that doesn't include mono. This is the
+        // usual case on macOS, where apps launched from Finder or Steam only get /usr/bin:/bin:/usr/sbin:/sbin.
+        // The official macOS package installs into Mono.framework, and Homebrew uses /opt/homebrew on Apple Silicon.
+        private static readonly string[] FallbackMonoDirs =
+        {
+            "/usr/bin",
+            "/usr/local/bin",
+            "/opt/homebrew/bin",
+            "/Library/Frameworks/Mono.framework/Versions/Current/Commands"
+        };
 
         // We call chmod directly because Unity 6's Managed folder doesn't include Mono.Posix.
         [DllImport("libc", SetLastError = true)]
