@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 1.7.4.14
+* Also explicitly use `mono` on MacOS, similar to Linux.
+
 ## 1.7.4.13
 * Fix a bug that would cause KSPBurst to not load on MacOS.
 
